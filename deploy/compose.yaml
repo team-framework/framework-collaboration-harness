@@ -1,0 +1,16 @@
+services:
+  alerts:
+    build: { context: ., dockerfile: Dockerfile }
+    command: node alerts/daemon.mjs
+    env_file: .env
+    environment:
+      ALERT_INTERVAL_MINUTES: "60"
+      ALERT_STATE_PATH: /app/.runtime/alert-state.json
+      SUMMARY_STATE_PATH: /app/.runtime/summary-state.json
+    volumes: ["./runtime:/app/.runtime"]
+    restart: unless-stopped
+  gateway:
+    build: { context: ., dockerfile: Dockerfile }
+    command: node alerts/discord-gateway.mjs
+    env_file: .env
+    restart: unless-stopped

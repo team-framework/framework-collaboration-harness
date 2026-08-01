@@ -1,0 +1,33 @@
+name: chaeyn 서버 배포
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - alerts/**
+      - deploy/**
+      - package.json
+      - .github/workflows/deploy-chaeyn-server.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, chaeyn-server, framework-harness]
+    steps:
+      - uses: actions/checkout@v4
+      - name: 서버 서비스 갱신
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_dir=/home/chaeyn/apps/framework-collaboration-harness
+          install -d -m 700 "$app_dir" "$app_dir/runtime"
+          install -m 600 package.json "$app_dir/package.json"
+          rsync -a --delete alerts/ "$app_dir/alerts/"
+          install -m 600 deploy/Dockerfile "$app_dir/Dockerfile"
+          install -m 600 deploy/compose.yaml "$app_dir/compose.yaml"
+          cd "$app_dir"
+          docker compose up -d --build
+          docker compose ps

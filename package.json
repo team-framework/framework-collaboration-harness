@@ -1,0 +1,11 @@
+{
+  "name": "framework-collaboration-harness",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "alerts:dry-run": "node alerts/run.mjs --dry-run",
+    "alerts:send-test": "node alerts/send-test-notification.mjs",
+    "discord:gateway": "node alerts/discord-gateway.mjs"
+  }
+}
