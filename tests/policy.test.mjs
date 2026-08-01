@@ -48,7 +48,7 @@ test("브랜치와 PR의 방치 상태를 각각 판별해요", () => {
   assert.deepEqual(alerts.map((item) => item.kind), ["branch-no-commit", "branch-stalled"]);
 });
 
-test("Open PR의 리뷰어·승인·변경 요청 방치를 판별해요", () => {
+test("Open PR의 리뷰·승인·변경 요청 방치를 판별해요", () => {
   const base = {
     repository: "team-framework/innolive-client",
     number: 20,
@@ -65,7 +65,7 @@ test("Open PR의 리뷰어·승인·변경 요청 방치를 판별해요", () =>
     lastCommitAt: null
   };
   const noReviewer = evaluateAlerts({ now, issues: [], branches: [], pullRequests: [base] });
-  assert.equal(noReviewer[0].kind, "pr-no-reviewer");
+  assert.deepEqual(noReviewer, []);
 
   const waiting = evaluateAlerts({
     now,

@@ -60,15 +60,6 @@ export function evaluateAlerts({ now = new Date(), issues, branches, pullRequest
   }
 
   for (const pr of pullRequests.filter((pr) => !pr.isDraft)) {
-    if (pr.reviewers.length === 0 && olderThan(now, pr.createdAt, 2)) {
-      alerts.push(alert({
-        key: `pr-no-reviewer:${pr.repository}#${pr.number}:${pr.createdAt}`,
-        kind: "pr-no-reviewer",
-        recipients: [pr.author],
-        url: pr.url,
-        message: `Open PR에 리뷰어가 ${formatElapsed(now, pr.createdAt)}째 없어요. 리뷰어를 지정해 주세요.`
-      }));
-    }
     if (pr.reviewers.length > 0 && pr.lastReviewRequestAt && (!pr.lastReviewAt || date(pr.lastReviewAt) < date(pr.lastReviewRequestAt)) && olderThan(now, pr.lastReviewRequestAt, 5)) {
       alerts.push(alert({
         key: `pr-review-waiting:${pr.repository}#${pr.number}:${pr.lastReviewRequestAt}`,
