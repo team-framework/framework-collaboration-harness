@@ -124,7 +124,7 @@ jobs:
           git -C target add .codex .claude .github
           git -C target commit -m "chore: 협업 하네스 동기화"
           git -C target push origin "HEAD:$branch"
-          pr_url=$(gh pr create --repo "$TARGET_REPOSITORY" --base "$BASE_BRANCH" --head "$branch" --draft --title "chore: 협업 하네스 동기화" --body "Framework Collaboration Harness 변경을 동기화했어요.")
+          pr_url=$(gh pr create --repo "$TARGET_REPOSITORY" --base "$BASE_BRANCH" --head "$branch" --draft --title "chore: collaboration-harness-sync" --body "Framework Collaboration Harness 변경을 동기화했어요.")
           node source/sync/write-result.mjs --file "$result_file" --repository "$TARGET_REPOSITORY" --status pr_created --detail "$pr_url"
       - name: 대상 결과 보관
         if: always()
