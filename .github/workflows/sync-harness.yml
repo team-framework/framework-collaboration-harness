@@ -20,8 +20,8 @@ jobs:
   discover:
     runs-on: ubuntu-latest
     outputs:
-      enabled: ${{{ steps.configuration.outputs.enabled }}
-      matrix: ${{{ steps.targets.outputs.matrix }}
+      enabled: ${{ steps.configuration.outputs.enabled }}
+      matrix: ${{ steps.targets.outputs.matrix }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -29,8 +29,8 @@ jobs:
       - name: GitHub App 설정 확인
         id: configuration
         env:
-          APP_CLIENT_ID: ${{{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
-          APP_PRIVATE_KEY: ${{{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
+          APP_CLIENT_ID: ${{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
         run: |
           if [ -z "$APP_CLIENT_ID" ] || [ -z "$APP_PRIVATE_KEY" ]; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
@@ -43,17 +43,17 @@ jobs:
         if: steps.configuration.outputs.enabled == 'true'
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
-          private-key: ${{{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
-          owner: ${{{ github.repository_owner }}
+          client-id: ${{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
+          private-key: ${{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
           permission-contents: write
           permission-pull-requests: write
       - name: 설치된 대상 레포 찾기
         id: targets
         env:
-          GH_TOKEN: ${{{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          if [ "${{{ steps.configuration.outputs.enabled }}" != "true" ]; then
+          if [ "${{ steps.configuration.outputs.enabled }}" != "true" ]; then
             echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{{ fromJSON(needs.discover.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -77,25 +77,25 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
-          private-key: ${{{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
-          owner: ${{{ github.repository_owner }}
-          repositories: ${{{ matrix.name }}
+          client-id: ${{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
+          private-key: ${{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ matrix.name }}
           permission-contents: write
           permission-pull-requests: write
       - uses: actions/checkout@v6
         with:
-          repository: ${{{ matrix.repository }}
-          ref: ${{{ matrix.baseBranch }}
-          token: ${{{ steps.app-token.outputs.token }}
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.baseBranch }}
+          token: ${{ steps.app-token.outputs.token }}
           path: target
           persist-credentials: false
       - name: 협업 하네스 동기화
         env:
-          GH_TOKEN: ${{{ steps.app-token.outputs.token }}
-          TARGET_REPOSITORY: ${{{ matrix.repository }}
-          BASE_BRANCH: ${{{ matrix.baseBranch }}
-          APP_SLUG: ${{{ steps.app-token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TARGET_REPOSITORY: ${{ matrix.repository }}
+          BASE_BRANCH: ${{ matrix.baseBranch }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           set -euo pipefail
           result_file="$RUNNER_TEMP/sync-result.json"
@@ -129,8 +129,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sync-result-${{{ matrix.name }}
-          path: ${{{ runner.temp }}/sync-result.json
+          name: sync-result-${{ matrix.name }}
+          path: ${{ runner.temp }}/sync-result.json
           if-no-files-found: ignore
           retention-days: 1
 
