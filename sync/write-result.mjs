@@ -18,5 +18,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, JSON.stringify({ repository, status, detail }) + "\\n", { mode: 0o600 });
+  await writeFile(file, JSON.stringify({ repository, status, detail }) + "\n", { mode: 0o600 });
 }

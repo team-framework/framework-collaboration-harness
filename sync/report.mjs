@@ -10,7 +10,7 @@ const statusText = {
 
 export function renderSyncReport(results) {
   if (results.length === 0) {
-    return "## 협업 하네스 동기화\\n\\nGitHub App 설정이 없거나 동기화 대상 레포가 없어요.";
+    return "## 협업 하네스 동기화\n\nGitHub App 설정이 없거나 동기화 대상 레포가 없어요.";
   }
 
   const rows = results
@@ -23,7 +23,7 @@ export function renderSyncReport(results) {
     "| 대상 레포 | 결과 | 상세 |",
     "| --- | --- | --- |",
     ...rows
-  ].join("\\n");
+  ].join("\n");
 }
 
 function argument(name) {
