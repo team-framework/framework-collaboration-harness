@@ -1,0 +1,154 @@
+name: Sync Collaboration Harness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .codex/skills/**
+      - .claude/skills/**
+      - .github/ISSUE_TEMPLATE/**
+      - .github/pull_request_template.md
+      - .github/workflows/assign-issue-author.yml
+      - sync/**
+      - .github/workflows/sync-harness.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{{ steps.configuration.outputs.enabled }}
+      matrix: ${{{ steps.targets.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: GitHub App 설정 확인
+        id: configuration
+        env:
+          APP_CLIENT_ID: ${{{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
+          APP_PRIVATE_KEY: ${{{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APP_CLIENT_ID" ] || [ -z "$APP_PRIVATE_KEY" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "GitHub App 설정이 없어 동기화를 건너뛰어요." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: GitHub App 토큰 생성
+        id: app-token
+        if: steps.configuration.outputs.enabled == 'true'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
+          private-key: ${{{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{{ github.repository_owner }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: 설치된 대상 레포 찾기
+        id: targets
+        env:
+          GH_TOKEN: ${{{ steps.app-token.outputs.token }}
+        run: |
+          if [ "${{{ steps.configuration.outputs.enabled }}" != "true" ]; then
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api '/installation/repositories?per_page=100' > repositories.json
+          matrix=$(node sync/discover.mjs --input repositories.json --source-repository "$GITHUB_REPOSITORY")
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  sync:
+    needs: discover
+    if: needs.discover.outputs.enabled == 'true' && needs.discover.outputs.matrix != '{"include":[]}'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{{ fromJSON(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: source
+          persist-credentials: false
+      - name: 대상 레포 토큰 생성
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{{ vars.HARNESS_SYNC_APP_CLIENT_ID }}
+          private-key: ${{{ secrets.HARNESS_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{{ github.repository_owner }}
+          repositories: ${{{ matrix.name }}
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{{ matrix.repository }}
+          ref: ${{{ matrix.baseBranch }}
+          token: ${{{ steps.app-token.outputs.token }}
+          path: target
+          persist-credentials: false
+      - name: 협업 하네스 동기화
+        env:
+          GH_TOKEN: ${{{ steps.app-token.outputs.token }}
+          TARGET_REPOSITORY: ${{{ matrix.repository }}
+          BASE_BRANCH: ${{{ matrix.baseBranch }}
+          APP_SLUG: ${{{ steps.app-token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          result_file="$RUNNER_TEMP/sync-result.json"
+          branch="harness-sync/framework-collaboration"
+          existing_pr=$(gh pr list --repo "$TARGET_REPOSITORY" --state open --head "$branch" --json number,url --jq '.[0] // empty')
+          if [ -n "$existing_pr" ]; then
+            node source/sync/write-result.mjs --file "$result_file" --repository "$TARGET_REPOSITORY" --status existing_pr --detail "$existing_pr"
+            exit 0
+          fi
+
+          node source/sync/apply.mjs --source source --target target
+          if git -C target diff --quiet; then
+            node source/sync/write-result.mjs --file "$result_file" --repository "$TARGET_REPOSITORY" --status no_changes
+            exit 0
+          fi
+
+          git -C target diff --check
+          bot_id=$(gh api "/users/$APP_SLUG[bot]" --jq .id)
+          git -C target config user.name "$APP_SLUG[bot]"
+          git -C target config user.email "$bot_id+$APP_SLUG[bot]@users.noreply.github.com"
+          if git -C target ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            git -C target push origin --delete "$branch"
+          fi
+          git -C target switch -c "$branch"
+          git -C target add .codex .claude .github
+          git -C target commit -m "chore: 협업 하네스 동기화"
+          git -C target push origin "HEAD:$branch"
+          pr_url=$(gh pr create --repo "$TARGET_REPOSITORY" --base "$BASE_BRANCH" --head "$branch" --draft --title "chore: 협업 하네스 동기화" --body "Framework Collaboration Harness 변경을 동기화했어요.")
+          node source/sync/write-result.mjs --file "$result_file" --repository "$TARGET_REPOSITORY" --status pr_created --detail "$pr_url"
+      - name: 대상 결과 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-result-${{{ matrix.name }}
+          path: ${{{ runner.temp }}/sync-result.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+  report:
+    needs: [discover, sync]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: sync-result-*
+          path: results
+          merge-multiple: true
+      - name: 동기화 결과 요약
+        run: |
+          mkdir -p results
+          node sync/report.mjs --results-directory results >> "$GITHUB_STEP_SUMMARY"

@@ -25,6 +25,10 @@ Framework 팀의 GitHub 협업 흐름을 가볍게 정리하고, GitHub 상태�
 
 PR은 항상 Draft로 시작해요. 작업이 준비되면 Ready for review로 전환해요.
 
+## 하네스 동기화
+
+협업 가이드와 GitHub 템플릿은 이 레포를 원본으로 관리해요. GitHub App이 설치된 레포에는 필요한 파일만 담은 Draft PR을 자동으로 만들어요. 설정 방법은 [하네스 자동 동기화](docs/HARNESS_SYNC.md)를 참고해요.
+
 ## Discord 알림
 
 알림은 Discord 확인 여부가 아니라 GitHub의 실제 상태를 기준으로 판단해요.
