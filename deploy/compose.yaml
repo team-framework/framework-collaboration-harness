@@ -13,4 +13,4 @@ services:
     build: { context: ., dockerfile: Dockerfile }
     command: node alerts/discord-gateway.mjs
     env_file: .env
-    restart: unless-stopped
+    restart: on-failure:3

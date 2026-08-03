@@ -23,6 +23,19 @@ npm run discord:gateway
 
 `alerts:dry-run`은 Discord에 보내지 않고, 실제 GitHub 상태에서 보낼 알림만 출력해요. `alerts:send-test`는 `TEST_GITHUB_USER` 또는 첫 번째 수신자에게 테스트 메시지를 보내요.
 
+## Gateway 재연결과 토큰 교체
+
+Gateway가 끊어지면 기존 세션 정보를 이용해 재개해요. 인증 오류나 권한 오류로 종료되면 자동 재접속하지 않고 멈춰서 잘못된 토큰으로 접속을 반복하지 않아요.
+
+Discord에서 토큰이 재설정된 경우에는 새 토큰을 서버의 `.env`에만 등록한 뒤 아래처럼 Gateway를 다시 시작해요. 토큰을 저장소, Actions 로그, 채팅에 넣지 않아요.
+
+```bash
+cd /home/chaeyn/apps/framework-collaboration-harness
+chmod 600 .env
+docker compose up -d gateway
+docker compose logs --tail=20 gateway
+```
+
 ## 중복 방지 상태
 
 알림기는 `ALERT_STATE_PATH`의 JSON 파일에 이미 전송한 상태와 처음 관찰한 브랜치 시각을 저장해요. 장기 실행 환경에서는 컨테이너 볼륨이나 서버 디스크처럼 재시작 뒤에도 남는 경로를 사용해야 해요.
