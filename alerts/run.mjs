@@ -4,16 +4,47 @@ import { collectSnapshot } from "./github.mjs";
 import { evaluateAlerts } from "./policy.mjs";
 import { loadState, saveState, selectUnsentAlerts, updateObservedBranches } from "./state.mjs";
 
-function dailySummary({ now, issues, pullRequests, alerts }) {
-  const oldIssues = (hours) => issues.filter((issue) => issue.assignedAt && now - new Date(issue.assignedAt) >= hours * 60 * 60 * 1_000).length;
-  const openPrs = pullRequests.filter((pr) => !pr.isDraft).length;
+const HOUR = 60 * 60 * 1_000;
+const MAX_SUMMARY_ITEMS = 10;
+
+function elapsedHours(now, value) {
+  return Math.floor((now - new Date(value)) / HOUR);
+}
+
+function issueLink(issue) {
+  return `[${issue.repository}#${issue.number}: ${issue.title}](<${issue.url}>)`;
+}
+
+function pullRequestLink(pr) {
+  return `[${pr.repository}#${pr.number}: ${pr.title}](<${pr.url}>)`;
+}
+
+function listSection(title, items) {
+  if (items.length === 0) return `**${title}**\n- 없어요.`;
+  const visible = items.slice(0, MAX_SUMMARY_ITEMS);
+  const omitted = items.length - visible.length;
+  return [
+    `**${title} (${items.length}개)**`,
+    ...visible.map((item) => `- ${item}`),
+    ...(omitted > 0 ? [`- 외 ${omitted}개는 GitHub에서 확인해 주세요.`] : [])
+  ].join("\n");
+}
+
+export function dailySummary({ now, issues, pullRequests, alerts }) {
+  const agedIssues = issues
+    .filter((issue) => issue.assignedAt && elapsedHours(now, issue.assignedAt) >= 24)
+    .sort((left, right) => new Date(left.assignedAt) - new Date(right.assignedAt));
+  const criticalIssues = agedIssues.filter((issue) => elapsedHours(now, issue.assignedAt) >= 48);
+  const warningIssues = agedIssues.filter((issue) => elapsedHours(now, issue.assignedAt) < 48);
+  const openPrs = pullRequests.filter((pr) => !pr.isDraft);
+
   return [
     "오늘 확인할 협업 작업이에요.",
-    `- 처리할 Open PR: ${openPrs}개`,
-    `- 24시간 넘은 이슈: ${oldIssues(24)}개`,
-    `- 48시간 넘은 이슈: ${oldIssues(48)}개`,
-    `- 현재 막힌 작업: ${alerts.length}개`
-  ].join("\n");
+    listSection("처리할 Open PR", openPrs.map(pullRequestLink)),
+    listSection("48시간 이상 이슈 · 심각", criticalIssues.map((issue) => `${issueLink(issue)} — 할당 후 ${elapsedHours(now, issue.assignedAt)}시간`)),
+    listSection("24~48시간 이슈 · 경고", warningIssues.map((issue) => `${issueLink(issue)} — 할당 후 ${elapsedHours(now, issue.assignedAt)}시간`)),
+    listSection("현재 막힌 작업", alerts.map((alert) => `[${alert.message}](<${alert.url}>)`))
+  ].join("\n\n");
 }
 
 export async function run({ env = process.env, now = new Date(), dryRun = false, summary = false, fetchImpl } = {}) {

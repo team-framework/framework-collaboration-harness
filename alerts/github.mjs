@@ -62,6 +62,7 @@ async function pullRequestSnapshot(client, repository, owner, pr, memberCache) {
     repository,
     number: pr.number,
     url: pr.html_url,
+    title: pr.title,
     author: pr.user.login,
     headRef: pr.head.ref,
     isDraft: pr.draft,
