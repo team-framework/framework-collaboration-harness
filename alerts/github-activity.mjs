@@ -49,6 +49,19 @@ const STATUS_LABELS = {
   success: "성공"
 };
 
+export const ACTIVITY_COLORS = {
+  default: 0x24292f,
+  comment: 0x0969da,
+  review: 0x8250df,
+  approved: 0x2da44e,
+  changesRequested: 0xcf222e,
+  opened: 0x1a7f37,
+  synchronized: 0xbf8700,
+  merged: 0x8250df,
+  closed: 0x57606a,
+  resolved: 0x2da44e
+};
+
 function clean(value) {
   return String(value || "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim();
 }
@@ -111,6 +124,47 @@ function details(...values) {
   return values.filter(Boolean).join("\n");
 }
 
+function pullRequestMetadata(event, payload) {
+  const pullRequest = payload.pull_request || (event === "issue_comment" && payload.issue?.pull_request ? payload.issue : null);
+  if (!pullRequest?.number) return null;
+  return {
+    number: pullRequest.number,
+    title: clean(pullRequest.title) || "제목 없는 PR",
+    url: pullRequest.html_url || repoUrl(payload),
+    state: clean(pullRequest.state) || (payload.action === "closed" ? "closed" : "open"),
+    merged: Boolean(pullRequest.merged || pullRequest.merged_at),
+    terminal: event === "pull_request" && payload.action === "closed"
+  };
+}
+
+function activityColor(event, payload) {
+  if (event === "issue_comment") return ACTIVITY_COLORS.comment;
+  if (event === "pull_request_review_comment") return ACTIVITY_COLORS.comment;
+  if (event === "pull_request_review_thread") {
+    return payload.action === "resolved" ? ACTIVITY_COLORS.resolved : ACTIVITY_COLORS.changesRequested;
+  }
+  if (event === "pull_request_review") {
+    const state = clean(payload.review?.state).toLowerCase();
+    if (state === "approved") return ACTIVITY_COLORS.approved;
+    if (state === "changes_requested") return ACTIVITY_COLORS.changesRequested;
+    return ACTIVITY_COLORS.review;
+  }
+  if (event === "pull_request") {
+    if (payload.action === "closed") return payload.pull_request?.merged ? ACTIVITY_COLORS.merged : ACTIVITY_COLORS.closed;
+    if (["opened", "reopened", "ready_for_review"].includes(payload.action)) return ACTIVITY_COLORS.opened;
+    if (payload.action === "synchronize") return ACTIVITY_COLORS.synchronized;
+  }
+  return ACTIVITY_COLORS.default;
+}
+
+function activityOccurredAt(payload) {
+  const source = payload.review || payload.comment || payload.pull_request || payload.workflow_run || payload.workflow_job || payload.check_run || payload.check_suite || payload.release || payload.deployment_status || payload.deployment;
+  const candidate = payload.action === "edited"
+    ? source?.updated_at
+    : source?.submitted_at || source?.created_at || source?.updated_at || payload.head_commit?.timestamp;
+  return clean(candidate) || null;
+}
+
 function contextualIssueDetail(payload) {
   if (payload.assignee?.login) return `대상: \`${payload.assignee.login}\``;
   if (payload.label?.name) return `라벨: \`${payload.label.name}\``;
@@ -151,7 +205,7 @@ function issueCommentActivity(payload) {
   if (issue.pull_request) {
     return {
       summary: pullRequestSummary(payload, issue, `일반 댓글을 ${action(payload)}`),
-      detail: details(pullRequestBodyDetail(issue), payload.action === "deleted" ? null : quotedDetail("일반 댓글", comment.body)),
+      detail: payload.action === "deleted" ? null : quotedDetail("일반 댓글", comment.body),
       url: comment.html_url || issue.html_url
     };
   }
@@ -166,9 +220,10 @@ function pullRequestActivity(payload) {
   const pr = payload.pull_request;
   let wording = action(payload);
   if (payload.action === "closed" && pr.merged) wording = "병합했어요";
+  const showBody = ["opened", "reopened", "edited", "ready_for_review", "converted_to_draft"].includes(payload.action);
   return {
     summary: pullRequestSummary(payload, pr, wording),
-    detail: details(pullRequestBodyDetail(pr), contextualPullRequestDetail(payload), payload.action === "synchronize" ? `커밋: \`${clean(payload.before).slice(0, 7)}\` → \`${clean(payload.after).slice(0, 7)}\`` : null),
+    detail: details(showBody ? pullRequestBodyDetail(pr) : null, contextualPullRequestDetail(payload), payload.action === "synchronize" ? `커밋: \`${clean(payload.before).slice(0, 7)}\` → \`${clean(payload.after).slice(0, 7)}\`` : null),
     url: pr.html_url
   };
 }
@@ -423,8 +478,12 @@ export function formatGitHubActivity(event, payload) {
     repository,
     actor,
     event,
+    action: clean(payload.action) || null,
     summary: truncate(formatted.summary, 256),
     detail: truncate(formatted.detail, 3_500) || null,
-    url: formatted.url || repoUrl(payload)
+    url: formatted.url || repoUrl(payload),
+    color: activityColor(event, payload),
+    occurredAt: activityOccurredAt(payload),
+    pullRequest: pullRequestMetadata(event, payload)
   };
 }

@@ -88,6 +88,7 @@ export function loadActivityConfig(env = process.env) {
   }
 
   return {
+    githubToken: env.GITHUB_TOKEN?.trim() || null,
     discordToken: required(env, "DISCORD_BOT_TOKEN"),
     repositories,
     channels: parseActivityChannels(required(env, "DISCORD_ACTIVITY_CHANNELS_JSON"), repositories),

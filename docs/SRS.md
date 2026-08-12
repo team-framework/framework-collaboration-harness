@@ -81,12 +81,16 @@
 
 1. 지연 알림과 독립된 webhook 서비스로 동작해야 해요.
 2. `innolive-client`, `innolive-server`, `innolive-ai`, `framework-collaboration-harness`만 허용해야 해요.
-3. Discord `github` 카테고리 아래 동일한 이름의 저장소별 채널로 라우팅해야 해요.
-4. 이슈·PR·일반 댓글·리뷰·코드 라인 댓글·리뷰 스레드·push·Check·Actions·배포·Release 활동을 전달해야 해요.
-5. 삭제된 댓글의 본문은 Discord에 다시 보존하지 않아야 해요.
-6. GitHub App은 쓰기 권한 없이 필요한 repository permission만 Read-only로 사용해야 해요.
-7. `X-Hub-Signature-256`을 검증하고, 허용되지 않은 저장소와 잘못된 서명을 거부해야 해요.
-8. `X-GitHub-Delivery`를 기준으로 중복을 방지하고, Discord 장애 중에는 영속 큐에 남겨 재전송해야 해요.
+3. Discord `github` 카테고리 아래 저장소별 채널과 PR별 전용 채널로 라우팅해야 해요.
+4. PR마다 `저장소명-pr-번호` 채널을 하나만 만들고, 해당 PR의 상태·커밋·댓글·리뷰·코드 라인 댓글·리뷰 스레드만 그 채널에 전달해야 해요.
+5. 서비스 시작 시 현재 Open PR과 그 커밋·댓글·리뷰·코드 라인 댓글 기록을 시간순으로 중복 없이 동기화해야 해요.
+6. 댓글·리뷰·승인·변경 요청·병합·Close 등 활동 종류별 embed 색상을 구분해야 해요.
+7. PR 병합 또는 Close 알림에는 채널 닫기 버튼을 표시하고, 채널 관리 권한이 있는 사용자가 누르면 해당 닫힌 PR 채널만 삭제해야 해요.
+8. 이슈·PR·일반 댓글·리뷰·코드 라인 댓글·리뷰 스레드·push·Check·Actions·배포·Release 활동을 전달해야 해요.
+9. 삭제된 댓글의 본문은 Discord에 다시 보존하지 않아야 해요.
+10. GitHub App은 쓰기 권한 없이 필요한 repository permission만 Read-only로 사용해야 해요.
+11. `X-Hub-Signature-256`을 검증하고, 허용되지 않은 저장소와 잘못된 서명을 거부해야 해요.
+12. `X-GitHub-Delivery`와 동기화 기록 ID를 기준으로 중복을 방지하고, Discord 장애 중에는 영속 큐에 남겨 재전송해야 해요.
 
 ## 5. 비기능 요구사항
 

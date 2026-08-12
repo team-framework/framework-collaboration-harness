@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatGitHubActivity } from "../alerts/github-activity.mjs";
+import { ACTIVITY_COLORS, formatGitHubActivity } from "../alerts/github-activity.mjs";
 
 function basePayload() {
   return {
@@ -33,9 +33,18 @@ test("PR 일반 댓글을 issue_comment 단위로 만들어요", () => {
   assert.equal(activity.actor, "chaeyn");
   assert.match(activity.summary, /chaeyn · PR: feat: 실시간 방송 추가 · 일반 댓글/);
   assert.doesNotMatch(activity.summary, /PR #10/);
-  assert.match(activity.detail, /PR 본문.*실시간 방송 송출과 시청 흐름을 추가합니다/s);
+  assert.doesNotMatch(activity.detail, /실시간 방송 송출과 시청 흐름을 추가합니다/);
   assert.match(activity.detail, /@everyone/);
   assert.match(activity.url, /issuecomment-1$/);
+  assert.equal(activity.color, ACTIVITY_COLORS.comment);
+  assert.deepEqual(activity.pullRequest, {
+    number: 10,
+    title: "feat: 실시간 방송 추가",
+    url: "https://github.com/team-framework/innolive-client/pull/10",
+    state: "open",
+    merged: false,
+    terminal: false
+  });
 });
 
 test("PR 활동 제목에 작업자와 PR명을, 설명에 PR 본문을 넣어요", () => {
@@ -102,6 +111,7 @@ test("PR 리뷰 승인과 리뷰 스레드 해결을 구분해요", () => {
   assert.match(review.summary, /chaeyn · PR: feat: OAuth 추가/);
   assert.match(review.summary, /승인 리뷰를 남겼어요/);
   assert.equal(review.detail, null);
+  assert.equal(review.color, ACTIVITY_COLORS.approved);
   assert.match(thread.summary, /리뷰 스레드를 해결했어요/);
   assert.doesNotMatch(thread.detail, /Google OAuth 로그인을 연결합니다/);
   assert.match(thread.detail, /Auth\.swift:7/);
@@ -136,8 +146,37 @@ test("승인 리뷰는 상태만, Request Changes는 내용까지 표시해요",
   assert.match(requestedChanges.summary, /변경을 요청했어요/);
   assert.match(requestedChanges.detail, /변경 요청 내용.*종료 후 세션 정리도 추가해 주세요/s);
   assert.doesNotMatch(requestedChanges.detail, /방송 종료 상태를 정리합니다/);
+  assert.equal(requestedChanges.color, ACTIVITY_COLORS.changesRequested);
   assert.match(emptyCommentReview.detail, /리뷰 내용.*작성된 리뷰 내용이 없어요/s);
   assert.equal(dismissedReview.detail, null);
+});
+
+test("병합과 Close 활동을 구분하고 PR 채널 종료 대상으로 표시해요", () => {
+  const pullRequest = {
+    number: 50,
+    title: "feat: 방송 통계 추가",
+    body: "방송 통계를 추가합니다.",
+    state: "closed",
+    html_url: "https://github.com/team-framework/innolive-client/pull/50"
+  };
+  const merged = formatGitHubActivity("pull_request", {
+    ...basePayload(),
+    action: "closed",
+    pull_request: { ...pullRequest, merged: true }
+  });
+  const closed = formatGitHubActivity("pull_request", {
+    ...basePayload(),
+    action: "closed",
+    pull_request: { ...pullRequest, merged: false }
+  });
+
+  assert.match(merged.summary, /병합했어요/);
+  assert.equal(merged.color, ACTIVITY_COLORS.merged);
+  assert.equal(merged.pullRequest.terminal, true);
+  assert.equal(merged.pullRequest.merged, true);
+  assert.match(closed.summary, /종료했어요/);
+  assert.equal(closed.color, ACTIVITY_COLORS.closed);
+  assert.equal(closed.pullRequest.terminal, true);
 });
 
 test("삭제된 댓글의 본문은 Discord에 다시 보존하지 않아요", () => {

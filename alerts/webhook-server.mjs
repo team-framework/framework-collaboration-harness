@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { createActivityDeliveryQueue } from "./activity-delivery-queue.mjs";
 import { loadActivityConfig } from "./config.mjs";
 import { formatGitHubActivity } from "./github-activity.mjs";
+import { syncOpenPullRequests } from "./sync-open-prs.mjs";
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
 
@@ -85,6 +86,11 @@ export function startWebhookServer({ env = process.env, fetchImpl = fetch } = {}
   const server = createServer(handler);
   server.listen(config.webhookPort, config.webhookHost, () => {
     console.log(`GitHub 활동 webhook을 ${config.webhookHost}:${config.webhookPort}${config.webhookPath}에서 기다려요.`);
+    if (config.githubToken) {
+      void syncOpenPullRequests({ config, fetchImpl, deliveryQueue: handler.deliveryQueue })
+        .then((result) => console.log(`Open PR ${result.pullRequests}개에서 활동 ${result.activities}개를 동기화했어요. 새 전송 ${result.accepted}개, 중복 ${result.duplicates}개.`))
+        .catch((error) => console.error(`Open PR 활동 동기화에 실패했어요: ${error.message}`));
+    }
   });
   return server;
 }
