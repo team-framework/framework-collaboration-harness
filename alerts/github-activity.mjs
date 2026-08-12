@@ -86,6 +86,18 @@ function quotedDetail(label, value) {
   return body ? `**${label}**\n${body}` : null;
 }
 
+function pullRequestReviewDetail(payload) {
+  const review = payload.review;
+  const state = clean(review?.state).toLowerCase();
+  const status = payload.action === "dismissed"
+    ? action(payload)
+    : REVIEW_STATES[state] || clean(review?.state) || action(payload);
+  const content = payload.action === "dismissed"
+    ? "_취소된 리뷰의 내용은 표시하지 않아요._"
+    : quote(review?.body) || "_작성된 리뷰 내용이 없어요._";
+  return details(`**리뷰 상태**\n${status}`, `**리뷰 내용**\n${content}`);
+}
+
 function action(payload) {
   return ACTIONS[payload.action] || `${clean(payload.action) || "unknown"} 활동을 수행했어요`;
 }
@@ -172,7 +184,7 @@ function pullRequestReviewActivity(payload) {
     : action(payload);
   return {
     summary: pullRequestSummary(payload, pr, wording),
-    detail: details(pullRequestBodyDetail(pr), payload.action === "dismissed" ? null : quotedDetail("리뷰 내용", review.body)),
+    detail: details(pullRequestBodyDetail(pr), pullRequestReviewDetail(payload)),
     url: review.html_url || pr.html_url
   };
 }
