@@ -64,6 +64,28 @@ function quote(value) {
   return text ? text.split("\n").slice(0, 8).map((line) => `> ${line || " "}`).join("\n") : null;
 }
 
+function actorName(payload) {
+  return clean(payload.sender?.login || payload.pusher?.name || "github") || "github";
+}
+
+function pullRequestName(pr) {
+  return truncate(pr?.title, 155) || "제목 없는 PR";
+}
+
+function pullRequestSummary(payload, pr, wording) {
+  return `${actorName(payload)} · PR: ${pullRequestName(pr)} · ${wording}`;
+}
+
+function pullRequestBodyDetail(pr) {
+  const body = truncate(pr?.body, 2_000);
+  return `**PR 본문**\n${body || "_본문이 없어요._"}`;
+}
+
+function quotedDetail(label, value) {
+  const body = quote(value);
+  return body ? `**${label}**\n${body}` : null;
+}
+
 function action(payload) {
   return ACTIONS[payload.action] || `${clean(payload.action) || "unknown"} 활동을 수행했어요`;
 }
@@ -116,10 +138,16 @@ function issueActivity(payload) {
 
 function issueCommentActivity(payload) {
   const issue = payload.issue;
-  const target = issue.pull_request ? "PR" : "Issue";
   const comment = payload.comment;
+  if (issue.pull_request) {
+    return {
+      summary: pullRequestSummary(payload, issue, `일반 댓글을 ${action(payload)}`),
+      detail: details(pullRequestBodyDetail(issue), payload.action === "deleted" ? null : quotedDetail("일반 댓글", comment.body)),
+      url: comment.html_url || issue.html_url
+    };
+  }
   return {
-    summary: `${target} #${issue.number}의 일반 댓글을 ${action(payload)}`,
+    summary: `Issue #${issue.number}의 일반 댓글을 ${action(payload)}`,
     detail: details(`**${truncate(issue.title, 240)}**`, payload.action === "deleted" ? null : quote(comment.body)),
     url: comment.html_url || issue.html_url
   };
@@ -130,8 +158,8 @@ function pullRequestActivity(payload) {
   let wording = action(payload);
   if (payload.action === "closed" && pr.merged) wording = "병합했어요";
   return {
-    summary: `PR #${pr.number}을(를) ${wording}`,
-    detail: details(`**${truncate(pr.title, 240)}**`, contextualPullRequestDetail(payload), payload.action === "synchronize" ? `\`${clean(payload.before).slice(0, 7)}\` → \`${clean(payload.after).slice(0, 7)}\`` : null),
+    summary: pullRequestSummary(payload, pr, wording),
+    detail: details(pullRequestBodyDetail(pr), contextualPullRequestDetail(payload), payload.action === "synchronize" ? `커밋: \`${clean(payload.before).slice(0, 7)}\` → \`${clean(payload.after).slice(0, 7)}\`` : null),
     url: pr.html_url
   };
 }
@@ -143,8 +171,8 @@ function pullRequestReviewActivity(payload) {
     ? REVIEW_STATES[clean(review.state).toLowerCase()] || "리뷰를 제출했어요"
     : action(payload);
   return {
-    summary: `PR #${pr.number}을(를) ${wording}`,
-    detail: details(`**${truncate(pr.title, 240)}**`, payload.action === "dismissed" ? null : quote(review.body)),
+    summary: pullRequestSummary(payload, pr, wording),
+    detail: details(pullRequestBodyDetail(pr), payload.action === "dismissed" ? null : quotedDetail("리뷰 내용", review.body)),
     url: review.html_url || pr.html_url
   };
 }
@@ -154,8 +182,8 @@ function pullRequestReviewCommentActivity(payload) {
   const comment = payload.comment;
   const line = comment.line || comment.original_line;
   return {
-    summary: `PR #${pr.number}의 코드 라인 댓글을 ${action(payload)}`,
-    detail: details(`**${truncate(pr.title, 240)}**`, comment.path ? `파일: \`${truncate(comment.path, 180)}${line ? `:${line}` : ""}\`` : null, payload.action === "deleted" ? null : quote(comment.body)),
+    summary: pullRequestSummary(payload, pr, `코드 라인 댓글을 ${action(payload)}`),
+    detail: details(pullRequestBodyDetail(pr), comment.path ? `파일: \`${truncate(comment.path, 180)}${line ? `:${line}` : ""}\`` : null, payload.action === "deleted" ? null : quotedDetail("코드 라인 댓글", comment.body)),
     url: comment.html_url || pr.html_url
   };
 }
@@ -165,8 +193,8 @@ function pullRequestReviewThreadActivity(payload) {
   const firstComment = payload.thread?.comments?.[0];
   const line = firstComment?.line || firstComment?.original_line;
   return {
-    summary: `PR #${pr.number}의 ${action(payload)}`,
-    detail: details(`**${truncate(pr.title, 240)}**`, firstComment?.path ? `파일: \`${truncate(firstComment.path, 180)}${line ? `:${line}` : ""}\`` : null),
+    summary: pullRequestSummary(payload, pr, action(payload)),
+    detail: details(pullRequestBodyDetail(pr), firstComment?.path ? `파일: \`${truncate(firstComment.path, 180)}${line ? `:${line}` : ""}\`` : null),
     url: firstComment?.html_url || pr.html_url
   };
 }
@@ -375,7 +403,7 @@ const FORMATTERS = {
 export function formatGitHubActivity(event, payload) {
   const repository = clean(payload.repository?.full_name);
   if (!repository) throw new Error("GitHub webhook payload에 repository.full_name이 필요해요.");
-  const actor = clean(payload.sender?.login || payload.pusher?.name || "github");
+  const actor = actorName(payload);
   const formatted = FORMATTERS[event]?.(payload) || {
     summary: `\`${clean(event)}\` ${action(payload)}`,
     detail: null,
