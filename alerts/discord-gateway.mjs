@@ -171,7 +171,7 @@ if (import.meta.main) {
         interaction,
         token,
         openAIKey: process.env.OPENAI_API_KEY,
-        model: process.env.OPENAI_MODEL || "gpt-5-mini",
+        model: process.env.OPENAI_MODEL || "gpt-5-nano",
         botUserId
       });
     },

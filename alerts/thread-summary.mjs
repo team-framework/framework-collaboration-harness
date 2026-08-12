@@ -14,6 +14,7 @@ const THREAD_CREATED_MESSAGE_TYPE = 18;
 const MAX_MESSAGES = 500;
 const MAX_TRANSCRIPT_CHARS = 60_000;
 const MAX_DISCORD_CONTENT = 2_000;
+const DEFAULT_OPENAI_MODEL = "gpt-5-nano";
 
 function required(value, name) {
   const text = value?.trim();
@@ -116,7 +117,8 @@ function outputText(response) {
     ?.text;
 }
 
-export async function summarizeThread({ apiKey, model = "gpt-5-mini", transcript, fetchImpl = fetch }) {
+export async function summarizeThread({ apiKey, model = DEFAULT_OPENAI_MODEL, transcript, fetchImpl = fetch }) {
+  const reasoning = /^gpt-5-nano(?:-|$)/.test(model) ? { effort: "minimal" } : undefined;
   const response = await fetchImpl("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -126,6 +128,7 @@ export async function summarizeThread({ apiKey, model = "gpt-5-mini", transcript
     body: JSON.stringify({
       model,
       store: false,
+      reasoning,
       instructions: [
         "당신은 한국어 개발 협업 스레드를 정리하는 도우미예요.",
         "대화에 명시된 사실만 사용하고 추측하지 마세요.",

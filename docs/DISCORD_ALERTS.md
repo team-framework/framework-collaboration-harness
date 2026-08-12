@@ -13,7 +13,7 @@
 - `TARGET_REPOSITORIES`: 감시할 `owner/repository` 목록이에요.
 - `DISCORD_RECIPIENTS_JSON`: GitHub 아이디, Discord 사용자 ID, 개인 알림 채널 ID의 연결 정보예요.
 - `DISCORD_TEAM_ROLE_ID`, `DISCORD_TEAM_CHANNEL_ID`: 오전 9시 일일 요약에만 사용해요.
-- `OPENAI_API_KEY`, `OPENAI_MODEL`: `/스레드-정리`에서 대화를 요약할 때 사용해요. 기본 모델은 `gpt-5-mini`예요.
+- `OPENAI_API_KEY`, `OPENAI_MODEL`: `/스레드-정리`에서 대화를 요약할 때 사용해요. 기본 모델은 `gpt-5-nano`예요. 이 모델은 출력 토큰을 아끼기 위해 `reasoning.effort=minimal`로 호출해요.
 - `GITHUB_ACTIVITY_REPOSITORIES`: 실시간 활동을 허용할 `owner/repository` 목록이에요.
 - `GITHUB_WEBHOOK_SECRET`: GitHub App webhook 서명 검증에 사용하는 고엔트로피 비밀값이에요.
 - `DISCORD_ACTIVITY_CHANNELS_JSON`: 각 저장소와 기준 Discord 채널 ID의 연결 정보예요. PR 채널은 기준 채널과 같은 guild/category에 생성해요.
