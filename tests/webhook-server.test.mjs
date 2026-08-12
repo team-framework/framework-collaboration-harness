@@ -18,7 +18,13 @@ function requestFor({ body, event = "issue_comment", delivery = "delivery-1", re
     action: "created",
     repository: { full_name: repository, html_url: `https://github.com/${repository}` },
     sender: { login: "chaeyn" },
-    issue: { number: 10, title: "feat: 알림", html_url: `https://github.com/${repository}/pull/10`, pull_request: {} },
+    issue: {
+      number: 10,
+      title: "feat: 알림",
+      body: "GitHub 활동을 Discord로 전달합니다.",
+      html_url: `https://github.com/${repository}/pull/10`,
+      pull_request: {}
+    },
     comment: { body: "확인해 주세요.", html_url: `https://github.com/${repository}/pull/10#issuecomment-1` }
   }));
   const request = Readable.from([payload]);
@@ -88,7 +94,8 @@ test("검증된 webhook을 저장소별 Discord 채널에 한 번만 보내요",
   assert.equal(requests.length, 1);
   assert.match(requests[0].url, /channels\/123456789012345678\/messages$/);
   const discordPayload = JSON.parse(requests[0].options.body);
-  assert.match(discordPayload.embeds[0].title, /PR #10의 일반 댓글/);
+  assert.match(discordPayload.embeds[0].title, /chaeyn · PR: feat: 알림 · 일반 댓글/);
+  assert.match(discordPayload.embeds[0].description, /PR 본문.*GitHub 활동을 Discord로 전달합니다/s);
   const state = JSON.parse(await readFile(config.statePath, "utf8"));
   assert.equal(state.deliveries["delivery-1"], "2026-08-12T00:00:00.000Z");
 });

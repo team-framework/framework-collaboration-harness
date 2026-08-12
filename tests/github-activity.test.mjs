@@ -19,6 +19,7 @@ test("PR 일반 댓글을 issue_comment 단위로 만들어요", () => {
     issue: {
       number: 10,
       title: "feat: 실시간 방송 추가",
+      body: "실시간 방송 송출과 시청 흐름을 추가합니다.",
       html_url: "https://github.com/team-framework/innolive-client/pull/10",
       pull_request: { url: "https://api.github.com/pulls/10" }
     },
@@ -30,15 +31,39 @@ test("PR 일반 댓글을 issue_comment 단위로 만들어요", () => {
 
   assert.equal(activity.repository, "team-framework/innolive-client");
   assert.equal(activity.actor, "chaeyn");
-  assert.match(activity.summary, /PR #10의 일반 댓글/);
+  assert.match(activity.summary, /chaeyn · PR: feat: 실시간 방송 추가 · 일반 댓글/);
+  assert.doesNotMatch(activity.summary, /PR #10/);
+  assert.match(activity.detail, /PR 본문.*실시간 방송 송출과 시청 흐름을 추가합니다/s);
   assert.match(activity.detail, /@everyone/);
   assert.match(activity.url, /issuecomment-1$/);
+});
+
+test("PR 활동 제목에 작업자와 PR명을, 설명에 PR 본문을 넣어요", () => {
+  const activity = formatGitHubActivity("pull_request", {
+    ...basePayload(),
+    action: "opened",
+    pull_request: {
+      number: 11,
+      title: "feat: 방송 대기실 추가",
+      body: "방송 전 카메라와 마이크를 확인하는 대기실을 추가합니다.",
+      html_url: "https://github.com/team-framework/innolive-client/pull/11"
+    }
+  });
+
+  assert.equal(activity.summary, "chaeyn · PR: feat: 방송 대기실 추가 · 열었어요");
+  assert.doesNotMatch(activity.summary, /PR #11/);
+  assert.match(activity.detail, /PR 본문.*방송 전 카메라와 마이크를 확인하는 대기실을 추가합니다/s);
 });
 
 test("PR 코드 라인 댓글에 파일과 줄 번호를 넣어요", () => {
   const activity = formatGitHubActivity("pull_request_review_comment", {
     ...basePayload(),
-    pull_request: { number: 20, title: "fix: 연결 복구", html_url: "https://github.com/team-framework/innolive-client/pull/20" },
+    pull_request: {
+      number: 20,
+      title: "fix: 연결 복구",
+      body: "네트워크가 변경되면 WebRTC 연결을 복구합니다.",
+      html_url: "https://github.com/team-framework/innolive-client/pull/20"
+    },
     comment: {
       path: "apps/web/src/connect.ts",
       line: 42,
@@ -47,13 +72,20 @@ test("PR 코드 라인 댓글에 파일과 줄 번호를 넣어요", () => {
     }
   });
 
+  assert.match(activity.summary, /chaeyn · PR: fix: 연결 복구/);
   assert.match(activity.summary, /코드 라인 댓글/);
+  assert.match(activity.detail, /WebRTC 연결을 복구합니다/);
   assert.match(activity.detail, /apps\/web\/src\/connect\.ts:42/);
   assert.match(activity.detail, /early return/);
 });
 
 test("PR 리뷰 승인과 리뷰 스레드 해결을 구분해요", () => {
-  const pullRequest = { number: 30, title: "feat: OAuth 추가", html_url: "https://github.com/team-framework/innolive-client/pull/30" };
+  const pullRequest = {
+    number: 30,
+    title: "feat: OAuth 추가",
+    body: "Google OAuth 로그인을 연결합니다.",
+    html_url: "https://github.com/team-framework/innolive-client/pull/30"
+  };
   const review = formatGitHubActivity("pull_request_review", {
     ...basePayload(),
     action: "submitted",
@@ -67,8 +99,11 @@ test("PR 리뷰 승인과 리뷰 스레드 해결을 구분해요", () => {
     thread: { comments: [{ path: "Auth.swift", line: 7, html_url: `${pullRequest.html_url}#discussion_r2` }] }
   });
 
+  assert.match(review.summary, /chaeyn · PR: feat: OAuth 추가/);
   assert.match(review.summary, /승인했어요/);
+  assert.match(review.detail, /Google OAuth 로그인을 연결합니다/);
   assert.match(thread.summary, /리뷰 스레드를 해결했어요/);
+  assert.match(thread.detail, /Google OAuth 로그인을 연결합니다/);
   assert.match(thread.detail, /Auth\.swift:7/);
 });
 

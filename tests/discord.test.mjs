@@ -38,12 +38,14 @@ test("GitHub 활동 메시지는 어떤 Discord 멘션도 실행하지 않아요
     repository: "team-framework/innolive-client",
     actor: "chaeyn",
     event: "issue_comment",
-    summary: "PR #10의 일반 댓글을 작성했어요",
-    detail: "> @everyone 확인해 주세요.",
+    summary: "chaeyn · PR: feat: 실시간 방송 추가 · 일반 댓글을 작성했어요",
+    detail: "**PR 본문**\n방송 기능을 추가합니다.\n**일반 댓글**\n> @everyone 확인해 주세요.",
     url: "https://github.com/team-framework/innolive-client/pull/10#issuecomment-1"
   });
 
   assert.deepEqual(payload.allowed_mentions, { parse: [] });
   assert.equal(payload.embeds[0].author.name, "team-framework/innolive-client · chaeyn");
+  assert.match(payload.embeds[0].title, /chaeyn · PR: feat: 실시간 방송 추가/);
+  assert.match(payload.embeds[0].description, /PR 본문/);
   assert.match(payload.embeds[0].description, /@everyone/);
 });
