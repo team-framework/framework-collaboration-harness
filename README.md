@@ -11,6 +11,7 @@ Framework 팀의 GitHub 협업 흐름을 가볍게 정리하고, GitHub 상태�
 - PR 템플릿과 이슈 생성자 자동 담당자 지정 Action
 - GitHub 이슈·브랜치·PR 방치 상태 감지와 Discord 개인 알림
 - 매일 오전 9시(KST) 팀 요약
+- Discord 스레드의 원인·진행 과정·결론을 정리하는 `/스레드-정리`
 - Discord Bot Gateway 온라인 유지와 Docker Compose 배포 구성
 - `main` 푸시 시 `Deploy Discord Bot` workflow를 통한 서버 자동 배포
 
@@ -41,6 +42,8 @@ PR은 항상 Draft로 시작해요. 작업이 준비되면 Ready for review로 �
 - 변경 요청 뒤 5시간 동안 새 커밋 없음
 
 개인 알림은 지정 사용자만 멘션하며, `@everyone`은 사용하지 않아요. 일일 팀 요약만 Framework Team 역할을 멘션해요.
+
+메시지에서 시작한 스레드 안에서 `/스레드-정리`를 실행하면 대화를 요약해 원본 시작 메시지의 답글로 남겨요.
 
 ## 구조
 

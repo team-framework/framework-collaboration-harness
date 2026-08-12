@@ -62,7 +62,7 @@ function fakeTimers() {
 }
 
 test("Identify와 Resume payload를 구분해요", () => {
-  assert.equal(identifyPayload("token").op, 2);
+  assert.deepEqual({ op: identifyPayload("token").op, intents: identifyPayload("token").d.intents }, { op: 2, intents: 1 << 15 });
   assert.deepEqual(resumePayload({ token: "token", sessionId: "session", sequence: 42 }), {
     op: 6,
     d: { token: "token", session_id: "session", seq: 42 }

@@ -11,6 +11,15 @@
 - `TARGET_REPOSITORIES`: 감시할 `owner/repository` 목록이에요.
 - `DISCORD_RECIPIENTS_JSON`: GitHub 아이디, Discord 사용자 ID, 개인 알림 채널 ID의 연결 정보예요.
 - `DISCORD_TEAM_ROLE_ID`, `DISCORD_TEAM_CHANNEL_ID`: 오전 9시 일일 요약에만 사용해요.
+- `OPENAI_API_KEY`, `OPENAI_MODEL`: `/스레드-정리`에서 대화를 요약할 때 사용해요. 기본 모델은 `gpt-5-mini`예요.
+
+## 스레드 정리
+
+메시지에서 시작한 Discord 스레드 안에서 `/스레드-정리`를 실행하면 대화를 읽고 `원인 → 진행 과정 → 결론 / 다음 작업`으로 정리해요. 결과는 스레드 안이 아니라 원본 채널의 스레드 시작 메시지에 답글로 남기며, 시작 메시지 작성자에게 답글 알림을 보내요.
+
+Discord Developer Portal에서 `Message Content Intent`를 활성화하고, Framework Bot에 대상 채널의 `채널 보기`, `메시지 기록 보기`, `메시지 보내기` 권한을 부여해야 해요. 포럼·미디어 게시물은 부모 채널에 일반 답글을 남길 수 없어 지원하지 않아요.
+
+한 번에 최대 500개 메시지를 읽고, AI로 보내는 텍스트는 최대 60,000자로 제한해요. 작성자 이름과 사용자 멘션은 `참여자 1`, `참여자 2`처럼 익명화해요. OpenAI 요청은 `store: false`로 전송하며, 메시지 원문이나 요약 결과를 서버 로그에 남기지 않아요.
 
 ## 실행
 

@@ -1,4 +1,5 @@
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
+const MESSAGE_CONTENT_INTENT = 1 << 15;
 const FATAL_CLOSE_CODES = new Set([4004, 4010, 4011, 4012, 4013, 4014]);
 const SESSION_RESET_CLOSE_CODES = new Set([4007, 4009]);
 
@@ -13,7 +14,7 @@ export function identifyPayload(token) {
     op: 2,
     d: {
       token,
-      intents: 0,
+      intents: MESSAGE_CONTENT_INTENT,
       properties: { os: "linux", browser: "framework-harness", device: "framework-harness" },
       presence: {
         since: null,
@@ -36,6 +37,8 @@ export function keepDiscordOnline({
   token,
   WebSocketImpl = WebSocket,
   onReady = () => {},
+  onInteraction = () => {},
+  onError = (error) => console.error(error),
   onFatal = () => {},
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
@@ -119,7 +122,9 @@ export function keepDiscordOnline({
         resumeGatewayUrl = payload.d.resume_gateway_url;
         shouldResume = true;
         reconnectAttempts = 0;
-        onReady(payload.d.user);
+        Promise.resolve(onReady(payload.d.user)).catch(onError);
+      } else if (payload.op === 0 && payload.t === "INTERACTION_CREATE") {
+        Promise.resolve(onInteraction(payload.d)).catch(onError);
       }
     });
     socket.addEventListener("close", ({ code = 1006 }) => {
@@ -146,9 +151,26 @@ export function keepDiscordOnline({
 }
 
 if (import.meta.main) {
+  const { discoverDiscordContext, handleThreadSummaryInteraction, registerThreadSummaryCommand } = await import("./thread-summary.mjs");
+  const token = requiredEnv("DISCORD_BOT_TOKEN");
+  let botUserId = null;
   const stop = keepDiscordOnline({
-    token: requiredEnv("DISCORD_BOT_TOKEN"),
-    onReady: (user) => console.log(`Discord Gateway 연결 완료: ${user.username}`),
+    token,
+    onReady: async (user) => {
+      botUserId = user.id;
+      const context = await discoverDiscordContext({ token, teamChannelId: process.env.DISCORD_TEAM_CHANNEL_ID });
+      await registerThreadSummaryCommand({ token, ...context });
+      console.log(`Discord Gateway 연결 완료: ${user.username}`);
+      console.log("Discord 명령 등록 완료: /스레드-정리");
+    },
+    onInteraction: (interaction) => handleThreadSummaryInteraction({
+      interaction,
+      token,
+      openAIKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_MODEL || "gpt-5-mini",
+      botUserId
+    }),
+    onError: (error) => console.error(`Discord Gateway 처리에 실패했어요: ${error.message}`),
     onFatal: (code) => console.error(`Discord Gateway가 종료됐어요. close code: ${code}. 새 토큰 또는 Gateway 설정을 확인해 주세요.`)
   });
   process.once("SIGINT", stop);
