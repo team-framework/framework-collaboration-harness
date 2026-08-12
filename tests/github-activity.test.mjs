@@ -74,7 +74,7 @@ test("PR 코드 라인 댓글에 파일과 줄 번호를 넣어요", () => {
 
   assert.match(activity.summary, /chaeyn · PR: fix: 연결 복구/);
   assert.match(activity.summary, /코드 라인 댓글/);
-  assert.match(activity.detail, /WebRTC 연결을 복구합니다/);
+  assert.doesNotMatch(activity.detail, /WebRTC 연결을 복구합니다/);
   assert.match(activity.detail, /apps\/web\/src\/connect\.ts:42/);
   assert.match(activity.detail, /early return/);
 });
@@ -100,40 +100,44 @@ test("PR 리뷰 승인과 리뷰 스레드 해결을 구분해요", () => {
   });
 
   assert.match(review.summary, /chaeyn · PR: feat: OAuth 추가/);
-  assert.match(review.summary, /승인했어요/);
-  assert.match(review.detail, /Google OAuth 로그인을 연결합니다/);
-  assert.match(review.detail, /리뷰 상태.*승인했어요/s);
-  assert.match(review.detail, /리뷰 내용.*좋습니다/s);
+  assert.match(review.summary, /승인 리뷰를 남겼어요/);
+  assert.equal(review.detail, null);
   assert.match(thread.summary, /리뷰 스레드를 해결했어요/);
-  assert.match(thread.detail, /Google OAuth 로그인을 연결합니다/);
+  assert.doesNotMatch(thread.detail, /Google OAuth 로그인을 연결합니다/);
   assert.match(thread.detail, /Auth\.swift:7/);
 });
 
-test("본문 없는 리뷰도 상태와 빈 내용 안내를 표시해요", () => {
+test("승인 리뷰는 상태만, Request Changes는 내용까지 표시해요", () => {
   const pullRequest = {
     number: 31,
     title: "fix: 방송 종료 처리",
     body: "방송 종료 상태를 정리합니다.",
     html_url: "https://github.com/team-framework/innolive-client/pull/31"
   };
-  const emptyReview = formatGitHubActivity("pull_request_review", {
+  const requestedChanges = formatGitHubActivity("pull_request_review", {
     ...basePayload(),
     action: "submitted",
     pull_request: pullRequest,
-    review: { state: "changes_requested", body: null, html_url: `${pullRequest.html_url}#pullrequestreview-2` }
+    review: { state: "changes_requested", body: "종료 후 세션 정리도 추가해 주세요.", html_url: `${pullRequest.html_url}#pullrequestreview-2` }
+  });
+  const emptyCommentReview = formatGitHubActivity("pull_request_review", {
+    ...basePayload(),
+    action: "submitted",
+    pull_request: pullRequest,
+    review: { state: "commented", body: null, html_url: `${pullRequest.html_url}#pullrequestreview-3` }
   });
   const dismissedReview = formatGitHubActivity("pull_request_review", {
     ...basePayload(),
     action: "dismissed",
     pull_request: pullRequest,
-    review: { state: "changes_requested", body: "취소된 민감 리뷰", html_url: `${pullRequest.html_url}#pullrequestreview-3` }
+    review: { state: "changes_requested", body: "취소된 민감 리뷰", html_url: `${pullRequest.html_url}#pullrequestreview-4` }
   });
 
-  assert.match(emptyReview.summary, /변경을 요청했어요/);
-  assert.match(emptyReview.detail, /리뷰 상태.*변경을 요청했어요/s);
-  assert.match(emptyReview.detail, /리뷰 내용.*작성된 리뷰 내용이 없어요/s);
-  assert.doesNotMatch(dismissedReview.detail, /민감 리뷰/);
-  assert.match(dismissedReview.detail, /리뷰 내용.*취소된 리뷰의 내용은 표시하지 않아요/s);
+  assert.match(requestedChanges.summary, /변경을 요청했어요/);
+  assert.match(requestedChanges.detail, /변경 요청 내용.*종료 후 세션 정리도 추가해 주세요/s);
+  assert.doesNotMatch(requestedChanges.detail, /방송 종료 상태를 정리합니다/);
+  assert.match(emptyCommentReview.detail, /리뷰 내용.*작성된 리뷰 내용이 없어요/s);
+  assert.equal(dismissedReview.detail, null);
 });
 
 test("삭제된 댓글의 본문은 Discord에 다시 보존하지 않아요", () => {

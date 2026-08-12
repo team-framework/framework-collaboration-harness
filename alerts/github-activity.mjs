@@ -31,7 +31,7 @@ const ACTIONS = {
 };
 
 const REVIEW_STATES = {
-  approved: "승인했어요",
+  approved: "승인 리뷰를 남겼어요",
   changes_requested: "변경을 요청했어요",
   commented: "리뷰 의견을 남겼어요",
   dismissed: "리뷰를 취소했어요",
@@ -89,13 +89,10 @@ function quotedDetail(label, value) {
 function pullRequestReviewDetail(payload) {
   const review = payload.review;
   const state = clean(review?.state).toLowerCase();
-  const status = payload.action === "dismissed"
-    ? action(payload)
-    : REVIEW_STATES[state] || clean(review?.state) || action(payload);
-  const content = payload.action === "dismissed"
-    ? "_취소된 리뷰의 내용은 표시하지 않아요._"
-    : quote(review?.body) || "_작성된 리뷰 내용이 없어요._";
-  return details(`**리뷰 상태**\n${status}`, `**리뷰 내용**\n${content}`);
+  if (payload.action === "dismissed" || state === "approved") return null;
+  const content = quote(review?.body) || "_작성된 리뷰 내용이 없어요._";
+  const label = state === "changes_requested" ? "변경 요청 내용" : "리뷰 내용";
+  return `**${label}**\n${content}`;
 }
 
 function action(payload) {
@@ -184,7 +181,7 @@ function pullRequestReviewActivity(payload) {
     : action(payload);
   return {
     summary: pullRequestSummary(payload, pr, wording),
-    detail: details(pullRequestBodyDetail(pr), pullRequestReviewDetail(payload)),
+    detail: pullRequestReviewDetail(payload),
     url: review.html_url || pr.html_url
   };
 }
@@ -195,7 +192,7 @@ function pullRequestReviewCommentActivity(payload) {
   const line = comment.line || comment.original_line;
   return {
     summary: pullRequestSummary(payload, pr, `코드 라인 댓글을 ${action(payload)}`),
-    detail: details(pullRequestBodyDetail(pr), comment.path ? `파일: \`${truncate(comment.path, 180)}${line ? `:${line}` : ""}\`` : null, payload.action === "deleted" ? null : quotedDetail("코드 라인 댓글", comment.body)),
+    detail: details(comment.path ? `파일: \`${truncate(comment.path, 180)}${line ? `:${line}` : ""}\`` : null, payload.action === "deleted" ? null : quotedDetail("코드 라인 댓글", comment.body)),
     url: comment.html_url || pr.html_url
   };
 }
@@ -206,7 +203,7 @@ function pullRequestReviewThreadActivity(payload) {
   const line = firstComment?.line || firstComment?.original_line;
   return {
     summary: pullRequestSummary(payload, pr, action(payload)),
-    detail: details(pullRequestBodyDetail(pr), firstComment?.path ? `파일: \`${truncate(firstComment.path, 180)}${line ? `:${line}` : ""}\`` : null),
+    detail: firstComment?.path ? `파일: \`${truncate(firstComment.path, 180)}${line ? `:${line}` : ""}\`` : null,
     url: firstComment?.html_url || pr.html_url
   };
 }
