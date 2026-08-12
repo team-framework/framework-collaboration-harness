@@ -14,6 +14,7 @@
 - 담당자가 비어있는 이슈의 담당자를 생성자로 자동 지정
 - GitHub 활동을 기준으로 하는 개인별 Discord 알림과 일일 팀 요약
 - Discord 스레드 대화를 원인·진행 과정·결론으로 정리하는 명령
+- 전용 read-only GitHub App과 저장소별 Discord 실시간 활동 피드
 - Discord Bot 온라인 상태 유지용 Gateway 실행 도구
 
 ### 제외
@@ -78,11 +79,23 @@
 6. 답글 또는 멘션 알림은 스레드 작성자에게 전송해야 해요.
 7. 포럼·미디어 게시물과 일반 채널에서는 명령을 처리하지 않고 사용자에게 지원 범위를 알려야 해요.
 
+### FR-6. 저장소별 GitHub 활동 피드
+
+1. 지연 알림과 독립된 webhook 서비스로 동작해야 해요.
+2. `innolive-client`, `innolive-server`, `innolive-ai`, `framework-collaboration-harness`만 허용해야 해요.
+3. Discord `github` 카테고리 아래 동일한 이름의 저장소별 채널로 라우팅해야 해요.
+4. 이슈·PR·일반 댓글·리뷰·코드 라인 댓글·리뷰 스레드·push·Check·Actions·배포·Release 활동을 전달해야 해요.
+5. 삭제된 댓글의 본문은 Discord에 다시 보존하지 않아야 해요.
+6. GitHub App은 쓰기 권한 없이 필요한 repository permission만 Read-only로 사용해야 해요.
+7. `X-Hub-Signature-256`을 검증하고, 허용되지 않은 저장소와 잘못된 서명을 거부해야 해요.
+8. `X-GitHub-Delivery`를 기준으로 중복을 방지하고, Discord 장애 중에는 영속 큐에 남겨 재전송해야 해요.
+
 ## 5. 비기능 요구사항
 
 - 문서와 알림은 기본적으로 한국어와 부드러운 `~요` 말투를 사용해요.
 - Bot 토큰, Discord 사용자·채널 ID, 팀별 설정은 환경변수 또는 GitHub Secret/Variable로만 제공해요.
 - 개인 알림은 지정한 사용자만 멘션하고 `@everyone`·역할 멘션을 허용하지 않아요.
+- GitHub 활동 본문의 사용자·역할·`@everyone` 멘션은 Discord 멘션으로 해석하지 않아요.
 - 일일 팀 요약은 설정된 Framework Team 역할만 멘션할 수 있어요. 역할 ID는 `DISCORD_TEAM_ROLE_ID` 환경변수로 제공하고, 그 외 역할·`@everyone` 멘션은 허용하지 않아요.
 - Discord Gateway 연결은 끊기면 재연결하고, 장기 운영은 로컬 터미널이 아닌 지속 실행 환경에서 동작해야 해요.
 - 알림 판별은 재실행해도 중복 발송하지 않도록 상태를 저장해야 해요.
@@ -98,3 +111,5 @@
 - 테스트 알림은 지정 사용자만 멘션하며 민감 정보가 저장소나 로그에 남지 않아야 해요.
 - `/스레드-정리`는 스레드명과 원인·진행 과정·결론을 생성하고, 시작 방식에 맞게 원본 메시지 답글 또는 부모 채널 멘션 메시지로 전송해야 해요.
 - `main` 보호가 필요한 저장소에서는 Ruleset으로 직접 push와 조건 미충족 병합이 차단되어야 해요.
+- GitHub 공식 HMAC-SHA256 테스트 벡터와 저장소별 라우팅 테스트를 통과해야 해요.
+- Discord가 일시적으로 실패하면 webhook은 이미 큐에 수락되고, 복구 뒤 같은 delivery를 한 번만 전송해야 해요.

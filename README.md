@@ -10,6 +10,7 @@ Framework 팀의 GitHub 협업 흐름을 가볍게 정리하고, GitHub 상태�
 - GitHub Issue Form 4종: `feat`, `fix`, `chore`, `refactor`
 - PR 템플릿과 이슈 생성자 자동 담당자 지정 Action
 - GitHub 이슈·브랜치·PR 방치 상태 감지와 Discord 개인 알림
+- GitHub App webhook 기반 저장소별 실시간 활동 피드
 - 매일 오전 9시(KST) 팀 요약
 - Discord 스레드의 원인·진행 과정·결론을 정리하는 `/스레드-정리`
 - Discord Bot Gateway 온라인 유지와 Docker Compose 배포 구성
@@ -45,6 +46,19 @@ PR은 항상 Draft로 시작해요. 작업이 준비되면 Ready for review로 �
 
 Discord 스레드 안에서 `/스레드-정리`를 실행하면 스레드명과 대화 요약을 원본 채널에 남겨요. 메시지에서 시작한 스레드는 원본 메시지의 답글로, 독립 생성한 스레드는 작성자를 멘션한 일반 메시지로 전송해요.
 
+### 저장소별 실시간 활동
+
+지연 알림과 별개로 전용 read-only GitHub App의 webhook을 받아 Discord `github` 카테고리 아래 저장소별 채널로 전달해요.
+
+| GitHub 저장소 | Discord 채널 |
+| --- | --- |
+| `innolive-client` | `github / innolive-client` |
+| `innolive-server` | `github / innolive-server` |
+| `innolive-ai` | `github / innolive-ai` |
+| `framework-collaboration-harness` | `github / framework-collaboration-harness` |
+
+push, 이슈, PR 상태, 일반 댓글, 리뷰, 코드 라인 댓글, 리뷰 스레드, Check, Actions, 배포, Release 활동을 실시간으로 전달해요. GitHub 댓글 안의 `@everyone`이나 사용자 멘션은 Discord 멘션으로 실행하지 않아요.
+
 ## 구조
 
 ```text
@@ -56,6 +70,11 @@ alerts/daemon.mjs ──► Discord 개인 알림 / 팀 요약
         ▼
 서버 runtime/ 상태 파일 (중복 알림 방지)
 
+GitHub App webhook ──► alerts/webhook-server.mjs
+                              │
+                              ▼
+                     Discord 저장소별 활동 채널
+
 main push ──► Deploy Discord Bot ──► chaeyn 서버 Docker Compose
 ```
 
@@ -64,6 +83,7 @@ main push ──► Deploy Discord Bot ──► chaeyn 서버 Docker Compose
 ```bash
 npm test
 npm run alerts:dry-run
+npm run github:webhook
 ```
 
 실제 환경 변수와 운영 방법은 [Discord 알림 문서](docs/DISCORD_ALERTS.md)를 참고해요. 토큰, Discord 사용자 ID, 채널 ID는 저장소에 넣지 않고 서버 환경 파일이나 Secret으로만 관리해요.
