@@ -48,7 +48,7 @@ Discord 스레드 안에서 `/스레드-정리`를 실행하면 스레드명과 
 
 ### 저장소별 실시간 활동
 
-지연 알림과 별개로 전용 read-only GitHub App의 webhook을 받아 Discord `github` 카테고리 아래 저장소별 채널로 전달해요.
+지연 알림과 별개로 전용 read-only GitHub App의 webhook을 받아 Discord `github` 카테고리로 전달해요. 저장소 채널은 push·이슈·Actions 같은 비-PR 활동을 받고, PR 활동은 PR마다 `저장소명-pr-번호` 채널을 하나씩 자동 생성해 모아요.
 
 | GitHub 저장소 | Discord 채널 |
 | --- | --- |
@@ -57,7 +57,9 @@ Discord 스레드 안에서 `/스레드-정리`를 실행하면 스레드명과 
 | `innolive-ai` | `github / innolive-ai` |
 | `framework-collaboration-harness` | `github / framework-collaboration-harness` |
 
-push, 이슈, PR 상태, 일반 댓글, 리뷰, 코드 라인 댓글, 리뷰 스레드, Check, Actions, 배포, Release 활동을 실시간으로 전달해요. GitHub 댓글 안의 `@everyone`이나 사용자 멘션은 Discord 멘션으로 실행하지 않아요.
+push, 이슈, PR 상태, 일반 댓글, 리뷰, 코드 라인 댓글, 리뷰 스레드, Check, Actions, 배포, Release 활동을 실시간으로 전달해요. 댓글·리뷰·승인·변경 요청·병합·Close 등의 embed 색상을 구분해요. PR이 병합되거나 Close되면 `PR 채널 닫기` 버튼을 표시하고, 채널 관리 권한이 있는 사용자가 누르면 해당 PR 채널을 삭제해요. GitHub 댓글 안의 `@everyone`이나 사용자 멘션은 Discord 멘션으로 실행하지 않아요.
+
+서비스 시작 시 현재 Open PR의 생성 정보, 커밋, 일반 댓글, 리뷰, 코드 라인 댓글 기록을 읽어 PR별 채널에 시간순으로 동기화해요.
 
 ## 구조
 
@@ -72,8 +74,9 @@ alerts/daemon.mjs ──► Discord 개인 알림 / 팀 요약
 
 GitHub App webhook ──► alerts/webhook-server.mjs
                               │
-                              ▼
-                     Discord 저장소별 활동 채널
+                    ┌─────────┴─────────┐
+                    ▼                   ▼
+           Discord 저장소 채널    Discord PR별 채널
 
 main push ──► Deploy Discord Bot ──► chaeyn 서버 Docker Compose
 ```
@@ -84,6 +87,7 @@ main push ──► Deploy Discord Bot ──► chaeyn 서버 Docker Compose
 npm test
 npm run alerts:dry-run
 npm run github:webhook
+npm run github:sync-open-prs
 ```
 
 실제 환경 변수와 운영 방법은 [Discord 알림 문서](docs/DISCORD_ALERTS.md)를 참고해요. 토큰, Discord 사용자 ID, 채널 ID는 저장소에 넣지 않고 서버 환경 파일이나 Secret으로만 관리해요.

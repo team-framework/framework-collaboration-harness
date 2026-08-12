@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { activityNotificationPayload, sendDiscordMessage } from "./discord.mjs";
+import { resolveActivityChannel } from "./pr-channels.mjs";
 import { hasDelivery, loadWebhookState, rememberDelivery, saveWebhookState } from "./webhook-state.mjs";
 
 const RETRY_DELAY_MILLISECONDS = 30_000;
@@ -10,7 +11,7 @@ function deliveryFileName(deliveryId) {
   return `${createHash("sha256").update(deliveryId).digest("hex")}.json`;
 }
 
-export function createActivityDeliveryQueue({ config, fetchImpl = fetch, now = () => new Date(), scheduleRetry = setTimeout }) {
+export function createActivityDeliveryQueue({ config, fetchImpl = fetch, now = () => new Date(), scheduleRetry = setTimeout, resolveChannel = resolveActivityChannel }) {
   const queueDirectory = `${config.statePath}.queue`;
   let draining = null;
   let drainRequested = false;
@@ -41,14 +42,15 @@ export function createActivityDeliveryQueue({ config, fetchImpl = fetch, now = (
       const path = join(queueDirectory, file);
       const queued = JSON.parse(await readFile(path, "utf8"));
       if (!hasDelivery(state, queued.deliveryId)) {
-        const channelId = config.channels.get(queued.activity.repository);
-        if (!channelId) throw new Error(`${queued.activity.repository}의 Discord 활동 채널이 없어요.`);
-        await sendDiscordMessage({
-          token: config.discordToken,
-          channelId,
-          payload: activityNotificationPayload(queued.activity),
-          fetchImpl
-        });
+        const channelId = await resolveChannel({ config, activity: queued.activity, state, fetchImpl });
+        if (channelId) {
+          await sendDiscordMessage({
+            token: config.discordToken,
+            channelId,
+            payload: activityNotificationPayload(queued.activity),
+            fetchImpl
+          });
+        }
         rememberDelivery(state, queued.deliveryId, now());
         await saveWebhookState(config.statePath, state);
       }

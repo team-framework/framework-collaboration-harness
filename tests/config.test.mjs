@@ -30,12 +30,13 @@ const activityEnv = {
 };
 
 test("실시간 GitHub 활동 설정을 지연 알림 설정과 별도로 읽어요", () => {
-  const config = loadActivityConfig(activityEnv);
+  const config = loadActivityConfig({ ...activityEnv, GITHUB_TOKEN: "read-only-token" });
   assert.deepEqual(config.repositories, [
     "team-framework/innolive-client",
     "team-framework/framework-collaboration-harness"
   ]);
   assert.equal(config.channels.get("team-framework/innolive-client"), "123456789012345678");
+  assert.equal(config.githubToken, "read-only-token");
   assert.equal(config.webhookPort, 3006);
   assert.equal(config.webhookPath, "/github/webhooks");
 });

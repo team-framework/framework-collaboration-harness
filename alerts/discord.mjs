@@ -1,4 +1,7 @@
 const API_BASE_URL = "https://discord.com/api/v10";
+const DEFAULT_EMBED_COLOR = 0x24292f;
+
+export const CLOSE_PR_CHANNEL_CUSTOM_ID = "github-pr-channel-close:v1";
 
 function requireValue(value, name) {
   if (!value?.trim()) throw new Error(`${name} 환경변수가 필요해요.`);
@@ -29,12 +32,13 @@ export function teamSummaryPayload({ roleId, message }) {
   };
 }
 
-export function activityNotificationPayload({ repository, actor, event, summary, detail, url }) {
+export function activityNotificationPayload({ repository, actor, event, summary, detail, url, color, occurredAt, pullRequest }) {
   const title = requireValue(summary, "summary");
   const targetUrl = requireValue(url, "url");
+  const timestamp = occurredAt && !Number.isNaN(new Date(occurredAt).getTime()) ? new Date(occurredAt).toISOString() : null;
   return {
     embeds: [{
-      color: 0x24292f,
+      color: Number.isInteger(color) && color >= 0 && color <= 0xffffff ? color : DEFAULT_EMBED_COLOR,
       author: {
         name: `${requireValue(repository, "repository")} · ${requireValue(actor, "actor")}`,
         url: `https://github.com/${encodeURIComponent(actor)}`
@@ -42,8 +46,21 @@ export function activityNotificationPayload({ repository, actor, event, summary,
       title,
       url: targetUrl,
       ...(detail ? { description: detail } : {}),
-      footer: { text: `GitHub · ${requireValue(event, "event")}` }
+      footer: { text: `GitHub · ${requireValue(event, "event")}` },
+      ...(timestamp ? { timestamp } : {})
     }],
+    ...(pullRequest?.terminal ? {
+      components: [{
+        type: 1,
+        components: [{
+          type: 2,
+          style: 4,
+          custom_id: CLOSE_PR_CHANNEL_CUSTOM_ID,
+          label: "PR 채널 닫기",
+          emoji: { name: "🗑️" }
+        }]
+      }]
+    } : {}),
     allowed_mentions: { parse: [] }
   };
 }
@@ -60,7 +77,9 @@ export async function discordApiRequest({ token, path, method = "GET", body, fet
   });
 
   if (!response.ok) {
-    throw new Error(`Discord API 요청에 실패했어요: ${response.status}`);
+    const error = new Error(`Discord API 요청에 실패했어요: ${response.status}`);
+    error.statusCode = response.status;
+    throw error;
   }
   if (response.status === 204) return null;
   return response.json();

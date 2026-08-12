@@ -1,19 +1,22 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
-const VERSION = 1;
+const VERSION = 2;
 const MAX_DELIVERIES = 10_000;
 const MAX_AGE_MILLISECONDS = 7 * 24 * 60 * 60 * 1_000;
 
 export async function loadWebhookState(path) {
   try {
     const state = JSON.parse(await readFile(path, "utf8"));
-    if (state?.version !== VERSION || !state.deliveries || typeof state.deliveries !== "object" || Array.isArray(state.deliveries)) {
+    if (![1, VERSION].includes(state?.version) || !state.deliveries || typeof state.deliveries !== "object" || Array.isArray(state.deliveries)) {
       throw new Error("지원하지 않는 GitHub webhook 상태 형식이에요.");
     }
-    return state;
+    if (state.prChannels !== undefined && (!state.prChannels || typeof state.prChannels !== "object" || Array.isArray(state.prChannels))) {
+      throw new Error("지원하지 않는 GitHub webhook 상태 형식이에요.");
+    }
+    return { version: VERSION, deliveries: state.deliveries, prChannels: state.prChannels || {} };
   } catch (error) {
-    if (error.code === "ENOENT") return { version: VERSION, deliveries: {} };
+    if (error.code === "ENOENT") return { version: VERSION, deliveries: {}, prChannels: {} };
     throw error;
   }
 }
@@ -35,6 +38,6 @@ export function rememberDelivery(state, deliveryId, now = new Date()) {
 export async function saveWebhookState(path, state) {
   await mkdir(dirname(path), { recursive: true });
   const temporaryPath = `${path}.tmp`;
-  await writeFile(temporaryPath, `${JSON.stringify(state, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  await writeFile(temporaryPath, `${JSON.stringify({ ...state, version: VERSION, prChannels: state.prChannels || {} }, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   await rename(temporaryPath, path);
 }

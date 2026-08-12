@@ -151,6 +151,7 @@ export function keepDiscordOnline({
 }
 
 if (import.meta.main) {
+  const { handlePullRequestChannelInteraction } = await import("./pr-channel-interaction.mjs");
   const { discoverDiscordContext, handleThreadSummaryInteraction, registerThreadSummaryCommand } = await import("./thread-summary.mjs");
   const token = requiredEnv("DISCORD_BOT_TOKEN");
   let botUserId = null;
@@ -163,13 +164,17 @@ if (import.meta.main) {
       console.log(`Discord Gateway 연결 완료: ${user.username}`);
       console.log("Discord 명령 등록 완료: /스레드-정리");
     },
-    onInteraction: (interaction) => handleThreadSummaryInteraction({
-      interaction,
-      token,
-      openAIKey: process.env.OPENAI_API_KEY,
-      model: process.env.OPENAI_MODEL || "gpt-5-mini",
-      botUserId
-    }),
+    onInteraction: async (interaction) => {
+      const handled = await handlePullRequestChannelInteraction({ interaction, token });
+      if (handled) return;
+      await handleThreadSummaryInteraction({
+        interaction,
+        token,
+        openAIKey: process.env.OPENAI_API_KEY,
+        model: process.env.OPENAI_MODEL || "gpt-5-mini",
+        botUserId
+      });
+    },
     onError: (error) => console.error(`Discord Gateway 처리에 실패했어요: ${error.message}`),
     onFatal: (code) => console.error(`Discord Gateway가 종료됐어요. close code: ${code}. 새 토큰 또는 Gateway 설정을 확인해 주세요.`)
   });
