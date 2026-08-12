@@ -6,6 +6,7 @@
     "test": "node --test",
     "alerts:dry-run": "node alerts/run.mjs --dry-run",
     "alerts:send-test": "node alerts/send-test-notification.mjs",
-    "discord:gateway": "node alerts/discord-gateway.mjs"
+    "discord:gateway": "node alerts/discord-gateway.mjs",
+    "github:webhook": "node alerts/webhook-server.mjs"
   }
 }

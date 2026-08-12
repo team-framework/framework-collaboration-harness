@@ -29,6 +29,25 @@ export function teamSummaryPayload({ roleId, message }) {
   };
 }
 
+export function activityNotificationPayload({ repository, actor, event, summary, detail, url }) {
+  const title = requireValue(summary, "summary");
+  const targetUrl = requireValue(url, "url");
+  return {
+    embeds: [{
+      color: 0x24292f,
+      author: {
+        name: `${requireValue(repository, "repository")} · ${requireValue(actor, "actor")}`,
+        url: `https://github.com/${encodeURIComponent(actor)}`
+      },
+      title,
+      url: targetUrl,
+      ...(detail ? { description: detail } : {}),
+      footer: { text: `GitHub · ${requireValue(event, "event")}` }
+    }],
+    allowed_mentions: { parse: [] }
+  };
+}
+
 export async function discordApiRequest({ token, path, method = "GET", body, fetchImpl = fetch }) {
   const botToken = requireValue(token, "DISCORD_BOT_TOKEN");
   const response = await fetchImpl(`${API_BASE_URL}${path}`, {

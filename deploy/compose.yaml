@@ -14,3 +14,20 @@ services:
     command: node alerts/discord-gateway.mjs
     env_file: .env
     restart: on-failure:3
+  activity:
+    build: { context: ., dockerfile: Dockerfile }
+    command: node alerts/webhook-server.mjs
+    env_file: .env
+    environment:
+      GITHUB_WEBHOOK_HOST: 0.0.0.0
+      GITHUB_WEBHOOK_PORT: "3006"
+      GITHUB_WEBHOOK_PATH: /github/webhooks
+      GITHUB_WEBHOOK_STATE_PATH: /app/.runtime/github-webhook-state.json
+    ports: ["127.0.0.1:3006:3006"]
+    volumes: ["./runtime:/app/.runtime"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3006/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
