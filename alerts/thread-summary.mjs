@@ -9,6 +9,8 @@ export const THREAD_SUMMARY_COMMAND = "스레드-정리";
 
 const THREAD_TYPES = new Set([10, 11, 12]);
 const MESSAGE_PARENT_TYPES = new Set([0, 5]);
+const PRIVATE_THREAD_TYPE = 12;
+const THREAD_CREATED_MESSAGE_TYPE = 18;
 const MAX_MESSAGES = 500;
 const MAX_TRANSCRIPT_CHARS = 60_000;
 const MAX_DISCORD_CONTENT = 2_000;
@@ -165,9 +167,10 @@ function section(title, items) {
   return [`**${title}**`, ...normalized.slice(0, 6).map((item) => `- ${String(item).trim()}`)].join("\n");
 }
 
-export function formatThreadSummary({ summary, guildId, threadId }) {
+export function formatThreadSummary({ summary, guildId, threadId, threadName, ownerMentionId }) {
   const content = [
-    "🧵 **스레드 논의를 정리했어요.**",
+    `**${required(threadName, "threadName")}** 스레드를 정리했어요.`,
+    ...(ownerMentionId ? [`스레드 작성자: <@${ownerMentionId}>`] : []),
     section("원인", summary.cause),
     section("진행 과정", summary.process),
     section("결론 / 다음 작업", summary.conclusion),
@@ -175,6 +178,33 @@ export function formatThreadSummary({ summary, guildId, threadId }) {
   ].join("\n\n");
   if (content.length <= MAX_DISCORD_CONTENT) return content;
   return `${content.slice(0, MAX_DISCORD_CONTENT - 20)}\n…(일부 생략했어요.)`;
+}
+
+function summaryMessagePayload({ thread, starterMessage, summary }) {
+  const repliesToStarter = starterMessage && starterMessage.type !== THREAD_CREATED_MESSAGE_TYPE;
+  const ownerMentionId = repliesToStarter ? null : thread.owner_id;
+  const payload = {
+    content: formatThreadSummary({
+      summary,
+      guildId: thread.guild_id,
+      threadId: thread.id,
+      threadName: thread.name,
+      ownerMentionId
+    }),
+    allowed_mentions: repliesToStarter
+      ? { parse: [], replied_user: true }
+      : { parse: [], users: ownerMentionId ? [ownerMentionId] : [] }
+  };
+  if (repliesToStarter) {
+    payload.message_reference = {
+      type: 0,
+      message_id: starterMessage.id,
+      channel_id: thread.parent_id,
+      guild_id: thread.guild_id,
+      fail_if_not_exists: true
+    };
+  }
+  return payload;
 }
 
 async function finishInteraction({ interaction, content, fetchImpl }) {
@@ -207,7 +237,7 @@ export async function handleThreadSummaryInteraction({
   try {
     const thread = await discordApiRequest({ token, path: `/channels/${interaction.channel_id}`, fetchImpl });
     if (!THREAD_TYPES.has(thread.type) || !thread.parent_id) {
-      await finishInteraction({ interaction, content: "이 명령은 메시지에서 시작한 스레드 안에서만 사용할 수 있어요.", fetchImpl });
+      await finishInteraction({ interaction, content: "이 명령은 Discord 스레드 안에서만 사용할 수 있어요.", fetchImpl });
       return true;
     }
 
@@ -217,23 +247,20 @@ export async function handleThreadSummaryInteraction({
       return true;
     }
 
+    const starterMessage = thread.type === PRIVATE_THREAD_TYPE
+      ? null
+      : await discordApiRequest({
+        token,
+        path: `/channels/${thread.parent_id}/messages/${thread.id}`,
+        fetchImpl
+      });
     const messages = await fetchThreadMessages({ token, channelId: thread.id, fetchImpl });
     const transcript = buildThreadTranscript({ messages, botUserId });
     const summary = await summarizeThread({ apiKey: openAIKey, model, transcript, fetchImpl });
     const message = await sendDiscordMessage({
       token,
       channelId: thread.parent_id,
-      payload: {
-        content: formatThreadSummary({ summary, guildId: thread.guild_id, threadId: thread.id }),
-        message_reference: {
-          type: 0,
-          message_id: thread.id,
-          channel_id: thread.parent_id,
-          guild_id: thread.guild_id,
-          fail_if_not_exists: true
-        },
-        allowed_mentions: { parse: [], replied_user: true }
-      },
+      payload: summaryMessagePayload({ thread, starterMessage, summary }),
       fetchImpl
     });
     const resultUrl = `https://discord.com/channels/${thread.guild_id}/${thread.parent_id}/${message.id}`;
