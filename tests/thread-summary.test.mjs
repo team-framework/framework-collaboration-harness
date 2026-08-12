@@ -84,7 +84,6 @@ test("OpenAI Structured Output으로 스레드를 정리해요", async () => {
   let request;
   const summary = await summarizeThread({
     apiKey: "secret",
-    model: "gpt-5-mini",
     transcript: "대화",
     fetchImpl: async (_url, options) => {
       request = JSON.parse(options.body);
@@ -94,6 +93,8 @@ test("OpenAI Structured Output으로 스레드를 정리해요", async () => {
       };
     }
   });
+  assert.equal(request.model, "gpt-5-nano");
+  assert.deepEqual(request.reasoning, { effort: "minimal" });
   assert.equal(request.store, false);
   assert.equal(request.text.format.type, "json_schema");
   assert.deepEqual(summary, { cause: ["원인"], process: ["과정"], conclusion: ["결론"] });
