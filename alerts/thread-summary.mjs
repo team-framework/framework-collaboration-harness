@@ -25,7 +25,7 @@ function required(value, name) {
 export function threadSummaryCommandDefinition() {
   return {
     name: THREAD_SUMMARY_COMMAND,
-    description: "현재 스레드의 원인, 진행 과정, 결론을 정리해요.",
+    description: "현재 스레드를 시간 순 타임라인으로 정리해요.",
     type: 1,
     dm_permission: false
   };
@@ -133,7 +133,10 @@ export async function summarizeThread({ apiKey, model = DEFAULT_OPENAI_MODEL, tr
         "당신은 한국어 개발 협업 스레드를 정리하는 도우미예요.",
         "대화에 명시된 사실만 사용하고 추측하지 마세요.",
         "원인이 확정되지 않았다면 확정되지 않았다고 적으세요.",
-        "진행 과정은 중요한 확인과 시도만 시간 순서로 적으세요.",
+        "가독성을 위해 짧고 능동적인 문장으로 쓰고, 같은 내용을 반복하지 마세요.",
+        "three_line_summary의 problem, action, status는 각각 한 줄로, 핵심만 50자 이내로 적으세요.",
+        "timeline에는 중요한 확인, 시도, 결정만 대화 발생 시각 오름차순으로 적으세요.",
+        "timeline의 time에는 입력의 시각을 한국 시간 기준 MM-DD HH:mm 형식으로 적으세요.",
         "결론에는 결정된 내용, 해결 여부, 남은 다음 작업을 적으세요.",
         "사람 이름이나 계정명은 꼭 필요한 경우가 아니면 제외하세요."
       ].join(" "),
@@ -147,11 +150,31 @@ export async function summarizeThread({ apiKey, model = DEFAULT_OPENAI_MODEL, tr
           schema: {
             type: "object",
             properties: {
-              cause: { type: "array", items: { type: "string" } },
-              process: { type: "array", items: { type: "string" } },
+              three_line_summary: {
+                type: "object",
+                properties: {
+                  problem: { type: "string" },
+                  action: { type: "string" },
+                  status: { type: "string" }
+                },
+                required: ["problem", "action", "status"],
+                additionalProperties: false
+              },
+              timeline: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    time: { type: "string" },
+                    event: { type: "string" }
+                  },
+                  required: ["time", "event"],
+                  additionalProperties: false
+                }
+              },
               conclusion: { type: "array", items: { type: "string" } }
             },
-            required: ["cause", "process", "conclusion"],
+            required: ["three_line_summary", "timeline", "conclusion"],
             additionalProperties: false
           }
         }
@@ -165,19 +188,38 @@ export async function summarizeThread({ apiKey, model = DEFAULT_OPENAI_MODEL, tr
   return JSON.parse(text);
 }
 
-function section(title, items) {
+function headingSection(title, items) {
   const normalized = Array.isArray(items) && items.length > 0 ? items : ["확인된 내용이 없어요."];
-  return [`**${title}**`, ...normalized.slice(0, 6).map((item) => `- ${String(item).trim()}`)].join("\n");
+  return [`## ${title}`, ...normalized.slice(0, 6).map((item) => `- ${String(item).trim()}`)].join("\n");
+}
+
+function threeLineSummarySection(summary) {
+  const normalized = summary || {};
+  return [
+    "## 3줄 요약",
+    `### 문제 상황\n${String(normalized.problem || "확인된 내용이 없어요.").trim()}`,
+    `### 과정\n${String(normalized.action || "확인된 내용이 없어요.").trim()}`,
+    `### 상태 / 결론\n${String(normalized.status || "확인된 내용이 없어요.").trim()}`
+  ].join("\n");
+}
+
+function timelineSection(items) {
+  const normalized = Array.isArray(items) && items.length > 0 ? items : [];
+  if (normalized.length === 0) return "## 타임라인\n- 확인된 내용이 없어요.";
+  return [
+    "## 타임라인",
+    ...normalized.slice(0, 8).map(({ time, event }) => `- ${"`"}${String(time).trim()}${"`"} ${String(event).trim()}`)
+  ].join("\n");
 }
 
 export function formatThreadSummary({ summary, guildId, threadId, threadName, ownerMentionId }) {
   const content = [
-    `**${required(threadName, "threadName")}** 스레드를 정리했어요.`,
+    `# ${required(threadName, "threadName")} 스레드 정리`,
     ...(ownerMentionId ? [`스레드 작성자: <@${ownerMentionId}>`] : []),
-    section("원인", summary.cause),
-    section("진행 과정", summary.process),
-    section("결론 / 다음 작업", summary.conclusion),
-    `[스레드 열기](https://discord.com/channels/${guildId}/${threadId})`
+    threeLineSummarySection(summary.three_line_summary),
+    timelineSection(summary.timeline),
+    headingSection("다음 작업", summary.conclusion),
+    `-# [스레드 열기](https://discord.com/channels/${guildId}/${threadId})`
   ].join("\n\n");
   if (content.length <= MAX_DISCORD_CONTENT) return content;
   return `${content.slice(0, MAX_DISCORD_CONTENT - 20)}\n…(일부 생략했어요.)`;
