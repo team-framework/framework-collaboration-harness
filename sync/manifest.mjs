@@ -31,4 +31,4 @@ export const syncItems = [
 
 export const syncBranch = "harness-sync/framework-collaboration";
 export const syncCommitMessage = "chore: 협업 하네스 동기화";
-export const syncPullRequestTitle = "chore: 협업 하네스 동기화";
+export const syncPullRequestTitle = "chore: collaboration-harness-sync";

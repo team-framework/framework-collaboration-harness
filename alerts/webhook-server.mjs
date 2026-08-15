@@ -4,6 +4,7 @@ import { createActivityDeliveryQueue } from "./activity-delivery-queue.mjs";
 import { loadActivityConfig } from "./config.mjs";
 import { formatGitHubActivity, shouldDeliverGitHubActivity } from "./github-activity.mjs";
 import { syncOpenPullRequests } from "./sync-open-prs.mjs";
+import { syncHarnessInstallation } from "../sync/github-app.mjs";
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
 
@@ -32,6 +33,7 @@ function respond(response, statusCode, message = "") {
 
 export function createWebhookHandler({ config, fetchImpl = fetch, now = () => new Date(), deliveryQueue }) {
   let queue = Promise.resolve();
+  let syncQueue = Promise.resolve();
   const activityQueue = deliveryQueue || createActivityDeliveryQueue({ config, fetchImpl, now });
 
   async function webhookHandler(request, response) {
@@ -61,6 +63,20 @@ export function createWebhookHandler({ config, fetchImpl = fetch, now = () => ne
       }
 
       if (event === "ping") return respond(response, 200, "pong\n");
+      if (event === "installation" && payload.action === "created" && config.harnessSync) {
+        const enqueueSync = () => syncHarnessInstallation({
+          installationId: payload.installation?.id,
+          config: config.harnessSync,
+          sourceRoot: process.cwd(),
+          fetchImpl,
+          now: () => now().getTime()
+        });
+        const resultPromise = syncQueue.then(enqueueSync, enqueueSync);
+        syncQueue = resultPromise.then(() => undefined, () => undefined);
+        const results = await resultPromise;
+        console.log(`협업 하네스 설치 동기화: ${results.map((result) => `${result.repository}=${result.status}`).join(", ") || "대상 없음"}`);
+        return respond(response, 202, "harness sync accepted\n");
+      }
       const repository = payload.repository?.full_name;
       if (!config.repositories.includes(repository)) return respond(response, 403, "repository not allowed\n");
       if (!shouldDeliverGitHubActivity(event, payload)) return respond(response, 200, "ignored\n");
