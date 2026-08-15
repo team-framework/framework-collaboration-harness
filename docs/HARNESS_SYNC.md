@@ -1,6 +1,6 @@
 # 하네스 자동 동기화
 
-`framework-collaboration-harness`가 협업 가이드의 원본이에요. 원본이 바뀌면 설치된 GitHub App이 접근할 수 있는 레포를 자동으로 찾고, 필요한 파일만 담은 Draft PR을 하나씩 만들어요.
+`framework-collaboration-harness`가 협업 가이드의 원본이에요. 원본이 바뀌면 설치된 GitHub App이 접근할 수 있는 레포를 자동으로 찾고, 필요한 파일만 담은 Draft PR을 하나씩 만들어요. App을 새 레포에 설치하면 `installation.created` webhook으로 즉시 같은 Draft PR을 만들어요.
 
 ## 동기화 대상
 
@@ -32,6 +32,6 @@ App에는 아래 Repository permissions가 필요해요.
 - Pull requests: Read and write
 - Metadata: Read-only
 
-Webhooks와 사용자 권한은 필요 없어요. App의 Client ID는 하네스 레포 Variables의 `HARNESS_SYNC_APP_CLIENT_ID`에, private key는 Secrets의 `HARNESS_SYNC_APP_PRIVATE_KEY`에 넣어요.
+App은 `Installation` webhook을 구독하고, webhook URL을 배포한 하네스의 `/github/webhooks`로 설정해야 해요. App의 Client ID는 하네스 레포 Variables의 `HARNESS_SYNC_APP_CLIENT_ID`에, private key는 Secrets의 `HARNESS_SYNC_APP_PRIVATE_KEY`에 넣어요. 동일한 Client ID·private key와 `HARNESS_SYNC_SOURCE_REPOSITORY=team-framework/framework-collaboration-harness`를 서버 `.env`에도 설정해야 설치 직후 동기화를 실행할 수 있어요.
 
-설정 전에는 워크플로가 실패하지 않고 동기화를 건너뛰어요. 설정 후 Actions에서 **Sync Collaboration Harness**를 수동 실행해 첫 Draft PR 세 개가 생성되는지 확인해요.
+설정 전에는 워크플로가 실패하지 않고 동기화를 건너뛰어요. 설정 후 빈 레포 하나에 App을 설치해 `chore: collaboration-harness-sync` Draft PR이 생성되는지 확인해요. 기존 설치 레포는 Actions에서 **Sync Collaboration Harness**를 수동 실행해 최초 동기화를 할 수 있어요.

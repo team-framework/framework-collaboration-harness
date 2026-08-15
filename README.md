@@ -29,7 +29,7 @@ PR은 항상 Draft로 시작해요. 작업이 준비되면 Ready for review로 �
 
 ## 하네스 동기화
 
-협업 가이드와 GitHub 템플릿은 이 레포를 원본으로 관리해요. GitHub App이 설치된 레포에는 필요한 파일만 담은 Draft PR을 자동으로 만들어요. 설정 방법은 [하네스 자동 동기화](docs/HARNESS_SYNC.md)를 참고해요.
+협업 가이드와 GitHub 템플릿은 이 레포를 원본으로 관리해요. GitHub App이 새 레포에 설치되면 필요한 파일만 담은 Draft PR을 즉시 자동으로 만들고, 이후 원본 변경도 동기화해요. 설정 방법은 [하네스 자동 동기화](docs/HARNESS_SYNC.md)를 참고해요.
 
 ## Discord 알림
 

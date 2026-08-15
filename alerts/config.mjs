@@ -87,6 +87,14 @@ export function loadActivityConfig(env = process.env) {
     throw new Error("GITHUB_WEBHOOK_PATH는 /로 시작하는 경로여야 해요.");
   }
 
+  const syncAppId = env.HARNESS_SYNC_APP_CLIENT_ID?.trim();
+  const syncPrivateKey = env.HARNESS_SYNC_APP_PRIVATE_KEY?.trim();
+  const syncSourceRepository = env.HARNESS_SYNC_SOURCE_REPOSITORY?.trim();
+  const syncValues = [syncAppId, syncPrivateKey, syncSourceRepository];
+  if (syncValues.some(Boolean) && syncValues.some((value) => !value)) {
+    throw new Error("HARNESS_SYNC_APP_CLIENT_ID, HARNESS_SYNC_APP_PRIVATE_KEY, HARNESS_SYNC_SOURCE_REPOSITORY는 함께 설정해야 해요.");
+  }
+
   return {
     githubToken: env.GITHUB_TOKEN?.trim() || null,
     discordToken: required(env, "DISCORD_BOT_TOKEN"),
@@ -96,6 +104,11 @@ export function loadActivityConfig(env = process.env) {
     webhookHost: env.GITHUB_WEBHOOK_HOST?.trim() || "0.0.0.0",
     webhookPort: parsePort(env.GITHUB_WEBHOOK_PORT),
     webhookPath,
-    statePath: env.GITHUB_WEBHOOK_STATE_PATH?.trim() || ".runtime/github-webhook-state.json"
+    statePath: env.GITHUB_WEBHOOK_STATE_PATH?.trim() || ".runtime/github-webhook-state.json",
+    harnessSync: syncAppId ? {
+      appId: syncAppId,
+      privateKey: syncPrivateKey.replace(/\\n/g, "\n"),
+      sourceRepository: syncSourceRepository
+    } : null
   };
 }

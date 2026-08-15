@@ -47,3 +47,18 @@ test("활동 대상 저장소의 Discord 채널이 빠지면 거부해요", () =
     DISCORD_ACTIVITY_CHANNELS_JSON: '{"team-framework/innolive-client":"123456789012345678"}'
   }), /framework-collaboration-harness\.channelId/);
 });
+
+test("설치 직후 동기화 App 설정은 세 값을 함께 요구해요", () => {
+  assert.throws(() => loadActivityConfig({
+    ...activityEnv,
+    HARNESS_SYNC_APP_CLIENT_ID: "Iv1.test"
+  }), /함께 설정/);
+
+  const config = loadActivityConfig({
+    ...activityEnv,
+    HARNESS_SYNC_APP_CLIENT_ID: "Iv1.test",
+    HARNESS_SYNC_APP_PRIVATE_KEY: "first\\nsecond",
+    HARNESS_SYNC_SOURCE_REPOSITORY: "team-framework/framework-collaboration-harness"
+  });
+  assert.equal(config.harnessSync.privateKey, "first\nsecond");
+});
