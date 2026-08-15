@@ -63,6 +63,8 @@ test("초기 커밋이 없는 레포도 main을 초기화한 뒤 Draft PR을 만
   let treeCreates = 0;
   let commitCreates = 0;
   let refCreates = 0;
+  let initialFileCreates = 0;
+  let initialized = false;
   const result = await syncHarnessInstallation({
     installationId: 8,
     config: { appId: "Iv1.test", privateKey: privateKey.export({ type: "pkcs1", format: "pem" }), sourceRepository: "team-framework/framework-collaboration-harness" },
@@ -75,9 +77,11 @@ test("초기 커밋이 없는 레포도 main을 초기화한 뒤 Draft PR을 만
         { full_name: "team-framework/truly-empty", name: "truly-empty", default_branch: "main" }
       ] });
       if (path.startsWith("/repos/team-framework/truly-empty/pulls?")) return json([]);
-      if (path === "/repos/team-framework/truly-empty/git/ref/heads/main") return json({ message: "Git Repository is empty." }, 409);
-      if (path === "/repos/team-framework/truly-empty/git/trees" && options.method === "POST") return json({ sha: ++treeCreates === 1 ? "initial-tree" : "sync-tree" }, 201);
-      if (path === "/repos/team-framework/truly-empty/git/commits" && options.method === "POST") return json({ sha: ++commitCreates === 1 ? "initial-commit" : "sync-commit" }, 201);
+      if (path === "/repos/team-framework/truly-empty/git/ref/heads/main" && !initialized) return json({ message: "Git Repository is empty." }, 409);
+      if (path === "/repos/team-framework/truly-empty/contents/.gitkeep" && options.method === "POST") { initialized = true; return json({}, ++initialFileCreates === 1 ? 201 : 201); }
+      if (path === "/repos/team-framework/truly-empty/git/ref/heads/main") return json({ object: { sha: "initial-commit" } });
+      if (path === "/repos/team-framework/truly-empty/git/trees" && options.method === "POST") return json({ sha: ++treeCreates === 1 ? "sync-tree" : "unexpected-tree" }, 201);
+      if (path === "/repos/team-framework/truly-empty/git/commits" && options.method === "POST") return json({ sha: ++commitCreates === 1 ? "sync-commit" : "unexpected-commit" }, 201);
       if (path === "/repos/team-framework/truly-empty/git/refs" && options.method === "POST") return json({}, ++refCreates === 1 ? 201 : 201);
       if (path === "/repos/team-framework/truly-empty/git/commits/initial-commit") return json({ sha: "initial-commit", tree: { sha: "initial-tree" } });
       if (path === "/repos/team-framework/truly-empty/git/trees/initial-tree?recursive=1") return json({ tree: [] });
@@ -87,9 +91,10 @@ test("초기 커밋이 없는 레포도 main을 초기화한 뒤 Draft PR을 만
   });
 
   assert.equal(result[0].status, "pr_created");
-  assert.equal(treeCreates, 2);
-  assert.equal(commitCreates, 2);
-  assert.equal(refCreates, 2);
+  assert.equal(initialFileCreates, 1);
+  assert.equal(treeCreates, 1);
+  assert.equal(commitCreates, 1);
+  assert.equal(refCreates, 1);
 });
 
 test("GitHub App JWT는 짧은 유효 기간으로 만들어요", () => {
