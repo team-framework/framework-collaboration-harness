@@ -8,9 +8,8 @@
 - `.claude/skills/{issue,branch,commit,pull-request}`
 - `.github/ISSUE_TEMPLATE/{01-feat,02-fix,03-chore,04-refactor}.yml`
 - `.github/pull_request_template.md`
-- `.github/workflows/assign-issue-author.yml`
 
-Discord 알림 코드, 배포 설정, 대상 레포의 고유 스킬은 동기화하지 않아요.
+GitHub App 설치 토큰은 GitHub Actions workflow 파일을 만들 수 없으므로 `.github/workflows/assign-issue-author.yml`은 자동 동기화 대상에서 제외해요. Discord 알림 코드, 배포 설정, 대상 레포의 고유 스킬도 동기화하지 않아요.
 
 같은 대상 레포에 열린 동기화 PR이 있으면 새 PR을 만들지 않아요. PR을 머지하거나 닫은 다음 실행에서 최신 원본으로 다시 동기화해요.
 

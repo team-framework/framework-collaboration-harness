@@ -21,11 +21,6 @@ export const syncItems = [
     id: "pull-request-template",
     source: ".github/pull_request_template.md",
     destination: ".github/pull_request_template.md"
-  },
-  {
-    id: "assign-issue-author",
-    source: ".github/workflows/assign-issue-author.yml",
-    destination: ".github/workflows/assign-issue-author.yml"
   }
 ];
 
