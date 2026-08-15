@@ -140,3 +140,35 @@ test("서명이 틀리거나 허용되지 않은 저장소의 webhook은 거부�
   assert.equal(otherRepositoryResponse.statusCode, 403);
   assert.equal(requestCount, 0);
 });
+
+test("check_run과 진행 중인 배포 workflow는 큐에 넣지 않아요", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "framework-webhook-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  let requestCount = 0;
+  const handler = createWebhookHandler({
+    config: {
+      discordToken: "discord-token",
+      repositories: ["team-framework/innolive-client"],
+      channels: new Map([["team-framework/innolive-client", "123456789012345678"]]),
+      webhookSecret: secret,
+      webhookPath: "/github/webhooks",
+      statePath: join(directory, "state.json")
+    },
+    fetchImpl: async () => { requestCount += 1; return { ok: true, json: async () => ({}) }; }
+  });
+  const base = {
+    repository: { full_name: "team-framework/innolive-client", html_url: "https://github.com/team-framework/innolive-client" },
+    sender: { login: "chaeyn" }
+  };
+  for (const [event, payload] of [
+    ["check_run", { ...base, action: "created", check_run: { name: "Check deploy", status: "queued" } }],
+    ["workflow_run", { ...base, action: "completed", workflow_run: { name: "Deploy Discord Bot", status: "in_progress" } }]
+  ]) {
+    const response = responseRecorder();
+    await handler(requestFor({ body: Buffer.from(JSON.stringify(payload)), event, delivery: `delivery-${event}` }), response);
+    await response.completed;
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body, "ignored\n");
+  }
+  assert.equal(requestCount, 0);
+});

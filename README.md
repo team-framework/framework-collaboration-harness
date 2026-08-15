@@ -57,7 +57,7 @@ Discord 스레드 안에서 `/스레드-정리`를 실행하면 `3줄 요약(문
 | `innolive-ai` | `github / innolive-ai` |
 | `framework-collaboration-harness` | `github / framework-collaboration-harness` |
 
-push, 이슈, PR 상태, 일반 댓글, 리뷰, 코드 라인 댓글, 리뷰 스레드, Check, Actions, 배포, Release 활동을 실시간으로 전달해요. 댓글·리뷰·승인·변경 요청·병합·Close 등의 embed 색상을 구분해요. PR이 병합되거나 Close되면 `PR 채널 닫기` 버튼을 표시하고, 채널 관리 권한이 있는 사용자가 누르면 해당 PR 채널을 삭제해요. GitHub 댓글 안의 `@everyone`이나 사용자 멘션은 Discord 멘션으로 실행하지 않아요.
+push, 이슈, PR 상태, 일반 댓글, 리뷰, 코드 라인 댓글, 리뷰 스레드, 배포, Release 활동을 실시간으로 전달해요. Actions는 `Deploy Discord Bot` 워크플로의 성공·실패만 전달하며, `check_run`·대기열·실행 중 상태는 알림으로 보내지 않아요. 댓글·리뷰·승인·변경 요청·병합·Close 등의 embed 색상을 구분해요. PR이 병합되거나 Close되면 `PR 채널 닫기` 버튼을 표시하고, 채널 관리 권한이 있는 사용자가 누르면 해당 PR 채널을 삭제해요. GitHub 댓글 안의 `@everyone`이나 사용자 멘션은 Discord 멘션으로 실행하지 않아요.
 
 서비스 시작 시 현재 Open PR의 생성 정보, 커밋, 일반 댓글, 리뷰, 코드 라인 댓글 기록을 읽어 PR별 채널에 시간순으로 동기화해요.
 

@@ -89,7 +89,7 @@ Repository permissions는 쓰기 권한 없이 아래 항목만 **Read-only**로
 - Pull requests
 - Metadata는 GitHub가 필수 Read-only로 자동 부여해요.
 
-Webhook은 `Issues`, `Issue comment`, `Issue dependencies`, `Sub-issues`, `Pull request`, `Pull request review`, `Pull request review comment`, `Pull request review thread`, `Push`, `Create`, `Delete`, `Commit comment`, `Check run`, `Check suite`, `Workflow dispatch`, `Workflow job`, `Workflow run`, `Deployment`, `Deployment status`, `Discussion`, `Discussion comment`, `Release`, `Status`, `Fork`, `Wiki`, `Label`, `Milestone`, `Repository` 이벤트를 구독해요. 전용 형식이 없는 새 이벤트도 이벤트명과 action을 포함한 안전한 기본 메시지로 전달해요.
+Webhook은 `Issues`, `Issue comment`, `Issue dependencies`, `Sub-issues`, `Pull request`, `Pull request review`, `Pull request review comment`, `Pull request review thread`, `Push`, `Create`, `Delete`, `Commit comment`, `Check run`, `Check suite`, `Workflow dispatch`, `Workflow job`, `Workflow run`, `Deployment`, `Deployment status`, `Discussion`, `Discussion comment`, `Release`, `Status`, `Fork`, `Wiki`, `Label`, `Milestone`, `Repository` 이벤트를 구독해요. 이 중 `check_run`·`check_suite`·workflow job·workflow dispatch는 Discord로 전달하지 않고, workflow run은 `Deploy Discord Bot`의 성공·실패만 전달해요. 전용 형식이 없는 새 이벤트도 이벤트명과 action을 포함한 안전한 기본 메시지로 전달해요.
 
 GitHub App private key나 installation access token은 필요하지 않아요. webhook은 서명 검증만 하고, 현재 Open PR 기록 동기화는 기존 read-only `GITHUB_TOKEN`을 사용해요. webhook secret, GitHub token, Discord Bot token은 서버 `.env`에서만 읽고 저장소·이미지·로그에 넣지 않아요.
 

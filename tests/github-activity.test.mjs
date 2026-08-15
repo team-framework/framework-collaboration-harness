@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ACTIVITY_COLORS, formatGitHubActivity } from "../alerts/github-activity.mjs";
+import { ACTIVITY_COLORS, formatGitHubActivity, shouldDeliverGitHubActivity } from "../alerts/github-activity.mjs";
 
 function basePayload() {
   return {
@@ -214,6 +214,15 @@ test("새 webhook 이벤트도 안전한 기본 메시지로 전달해요", () =
   assert.equal(activity.url, "https://github.com/team-framework/innolive-client");
 });
 
+test("check_run은 알림을 보내지 않고 Deploy Discord Bot의 성공·실패만 Actions 알림으로 보내요", () => {
+  assert.equal(shouldDeliverGitHubActivity("check_run", { ...basePayload(), check_run: { name: "Check deploy" } }), false);
+  assert.equal(shouldDeliverGitHubActivity("workflow_job", { ...basePayload(), workflow_job: { name: "deploy", conclusion: "success" } }), false);
+  assert.equal(shouldDeliverGitHubActivity("workflow_run", { ...basePayload(), workflow_run: { name: "Deploy Discord Bot", conclusion: "queued" } }), false);
+  assert.equal(shouldDeliverGitHubActivity("workflow_run", { ...basePayload(), workflow_run: { name: "Deploy Discord Bot", conclusion: "success" } }), true);
+  assert.equal(shouldDeliverGitHubActivity("workflow_run", { ...basePayload(), workflow_run: { name: "Deploy Discord Bot", conclusion: "failure" } }), true);
+  assert.equal(shouldDeliverGitHubActivity("workflow_run", { ...basePayload(), workflow_run: { name: "Other workflow", conclusion: "failure" } }), false);
+});
+
 test("선택한 저장소 이벤트에 전용 요약을 만들어요", () => {
   const fork = formatGitHubActivity("fork", {
     ...basePayload(),
@@ -226,16 +235,8 @@ test("선택한 저장소 이벤트에 전용 요약을 만들어요", () => {
     ...basePayload(),
     pages: [{ page_name: "운영-가이드", action: "edited", html_url: "https://github.com/team-framework/innolive-client/wiki/운영-가이드" }]
   });
-  const workflow = formatGitHubActivity("workflow_dispatch", {
-    ...basePayload(),
-    action: "requested",
-    ref: "main",
-    workflow: { name: "Deploy", html_url: "https://github.com/team-framework/innolive-client/actions" }
-  });
 
   assert.match(fork.summary, /chaeyn\/innolive-client.*fork/);
   assert.match(wiki.summary, /Wiki 페이지 1개/);
   assert.match(wiki.detail, /운영-가이드/);
-  assert.match(workflow.summary, /Deploy.*수동 실행/);
-  assert.match(workflow.detail, /main/);
 });

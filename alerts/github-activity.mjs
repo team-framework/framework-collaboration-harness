@@ -49,6 +49,9 @@ const STATUS_LABELS = {
   success: "성공"
 };
 
+const DEPLOY_WORKFLOW_NAME = "Deploy Discord Bot";
+const DEPLOY_WORKFLOW_CONCLUSIONS = new Set(["success", "failure"]);
+
 export const ACTIVITY_COLORS = {
   default: 0x24292f,
   comment: 0x0969da,
@@ -263,26 +266,6 @@ function pullRequestReviewThreadActivity(payload) {
   };
 }
 
-function checkRunActivity(payload) {
-  const run = payload.check_run;
-  const result = run.conclusion || run.status;
-  return {
-    summary: `Check \`${truncate(run.name, 140)}\` 상태가 ${STATUS_LABELS[result] || clean(result)}이에요`,
-    detail: run.output?.title ? truncate(run.output.title, 500) : null,
-    url: run.html_url || commitUrl(payload, run.head_sha)
-  };
-}
-
-function checkSuiteActivity(payload) {
-  const suite = payload.check_suite;
-  const result = suite.conclusion || suite.status;
-  return {
-    summary: `Check suite 상태가 ${STATUS_LABELS[result] || clean(result)}이에요`,
-    detail: suite.app?.name ? `앱: ${suite.app.name}` : null,
-    url: commitUrl(payload, suite.head_sha)
-  };
-}
-
 function workflowActivity(payload, key, label) {
   const workflow = payload[key];
   const result = workflow.conclusion || workflow.status;
@@ -424,18 +407,16 @@ function issueRelationActivity(payload, label) {
   };
 }
 
-function workflowDispatchActivity(payload) {
-  const workflow = payload.workflow;
-  return {
-    summary: `Workflow${workflow?.name ? ` \`${truncate(workflow.name, 140)}\`` : ""} 수동 실행을 요청했어요`,
-    detail: payload.ref ? `ref: \`${truncate(payload.ref, 160)}\`` : null,
-    url: workflow?.html_url || repoUrl(payload)
-  };
+export function shouldDeliverGitHubActivity(event, payload) {
+  if (["check_run", "check_suite", "workflow_dispatch", "workflow_job"].includes(event)) return false;
+  if (event !== "workflow_run") return true;
+
+  const workflow = payload.workflow_run || {};
+  return clean(workflow.name) === DEPLOY_WORKFLOW_NAME
+    && DEPLOY_WORKFLOW_CONCLUSIONS.has(clean(workflow.conclusion).toLowerCase());
 }
 
 const FORMATTERS = {
-  check_run: checkRunActivity,
-  check_suite: checkSuiteActivity,
   commit_comment: commitCommentActivity,
   create: (payload) => refActivity({ ...payload, action: "create" }),
   delete: (payload) => refActivity({ ...payload, action: "delete" }),
@@ -459,8 +440,6 @@ const FORMATTERS = {
   repository: repositoryActivity,
   status: statusActivity,
   sub_issues: (payload) => issueRelationActivity(payload, "하위 이슈"),
-  workflow_dispatch: workflowDispatchActivity,
-  workflow_job: (payload) => workflowActivity(payload, "workflow_job", "Workflow job"),
   workflow_run: (payload) => workflowActivity(payload, "workflow_run", "Workflow")
 };
 

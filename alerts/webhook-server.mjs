@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { createActivityDeliveryQueue } from "./activity-delivery-queue.mjs";
 import { loadActivityConfig } from "./config.mjs";
-import { formatGitHubActivity } from "./github-activity.mjs";
+import { formatGitHubActivity, shouldDeliverGitHubActivity } from "./github-activity.mjs";
 import { syncOpenPullRequests } from "./sync-open-prs.mjs";
 
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -63,6 +63,7 @@ export function createWebhookHandler({ config, fetchImpl = fetch, now = () => ne
       if (event === "ping") return respond(response, 200, "pong\n");
       const repository = payload.repository?.full_name;
       if (!config.repositories.includes(repository)) return respond(response, 403, "repository not allowed\n");
+      if (!shouldDeliverGitHubActivity(event, payload)) return respond(response, 200, "ignored\n");
       const activity = formatGitHubActivity(event, payload);
 
       const enqueue = () => activityQueue.enqueue({ deliveryId, activity });
