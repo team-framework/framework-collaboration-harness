@@ -64,7 +64,11 @@ function githubClient({ token, fetchImpl = fetch }) {
       },
       ...(body ? { body: JSON.stringify(body) } : {})
     });
-    if (!response.ok) throw new Error(`GitHub API 요청에 실패했어요: ${method} ${path} (${response.status}) ${await response.text()}`);
+    if (!response.ok) {
+      const error = new Error(`GitHub API 요청에 실패했어요: ${method} ${path} (${response.status}) ${await response.text()}`);
+      error.status = response.status;
+      throw error;
+    }
     return response.status === 204 ? null : response.json();
   }
   return { request };
@@ -93,13 +97,35 @@ async function hasOpenSyncPullRequest(client, repository) {
   return pulls[0] || null;
 }
 
+async function baseCommitFor(client, target) {
+  try {
+    const ref = await client.request(`/repos/${target.repository}/git/ref/heads/${encodeURIComponent(target.baseBranch)}`);
+    return client.request(`/repos/${target.repository}/git/commits/${ref.object.sha}`);
+  } catch (error) {
+    if (error.status !== 409) throw error;
+
+    const tree = await client.request(`/repos/${target.repository}/git/trees`, {
+      method: "POST",
+      body: { tree: [] }
+    });
+    const commit = await client.request(`/repos/${target.repository}/git/commits`, {
+      method: "POST",
+      body: { message: "chore: 저장소 초기화", tree: tree.sha, parents: [] }
+    });
+    await client.request(`/repos/${target.repository}/git/refs`, {
+      method: "POST",
+      body: { ref: `refs/heads/${target.baseBranch}`, sha: commit.sha }
+    });
+    return client.request(`/repos/${target.repository}/git/commits/${commit.sha}`);
+  }
+}
+
 async function createSyncPullRequest({ client, target, files }) {
   const existing = await hasOpenSyncPullRequest(client, target.repository);
   if (existing) return { repository: target.repository, status: "existing_pr", detail: existing.html_url };
 
-  const ref = await client.request(`/repos/${target.repository}/git/ref/heads/${encodeURIComponent(target.baseBranch)}`);
-  const baseCommitSha = ref.object.sha;
-  const baseCommit = await client.request(`/repos/${target.repository}/git/commits/${baseCommitSha}`);
+  const baseCommit = await baseCommitFor(client, target);
+  const baseCommitSha = baseCommit.sha;
   const baseTree = await client.request(`/repos/${target.repository}/git/trees/${baseCommit.tree.sha}?recursive=1`);
   const existingBlobs = new Map(baseTree.tree.filter((entry) => entry.type === "blob").map((entry) => [entry.path, entry.sha]));
   const changedFiles = files.filter((file) => existingBlobs.get(file.path) !== file.sha);
