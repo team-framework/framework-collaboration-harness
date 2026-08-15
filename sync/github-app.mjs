@@ -108,7 +108,7 @@ async function baseCommitFor(client, target) {
       method: "POST",
       body: {
         message: "chore: 저장소 초기화",
-        content: "",
+        content: "Cg==",
         branch: target.baseBranch
       }
     });
