@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
-import { createWebhookHandler, verifyWebhookSignature } from "../alerts/webhook-server.mjs";
+import { createWebhookHandler, isHarnessSyncEvent, verifyWebhookSignature } from "../alerts/webhook-server.mjs";
 
 const secret = "It's a Secret to Everybody";
 
@@ -59,6 +59,13 @@ test("GitHub 공식 HMAC-SHA256 테스트 벡터를 검증해요", () => {
     signature: "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"
   }), true);
   assert.equal(verifyWebhookSignature({ secret, body, signature: "sha256=wrong" }), false);
+});
+
+test("새 설치와 기존 설치에 레포를 추가한 경우 모두 하네스 동기화 이벤트로 처리해요", () => {
+  assert.equal(isHarnessSyncEvent("installation", "created"), true);
+  assert.equal(isHarnessSyncEvent("installation_repositories", "added"), true);
+  assert.equal(isHarnessSyncEvent("installation", "deleted"), false);
+  assert.equal(isHarnessSyncEvent("installation_repositories", "removed"), false);
 });
 
 test("검증된 webhook을 저장소별 Discord 채널에 한 번만 보내요", async (t) => {

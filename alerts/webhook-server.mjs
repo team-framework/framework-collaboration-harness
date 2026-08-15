@@ -31,6 +31,11 @@ function respond(response, statusCode, message = "") {
   response.end(message);
 }
 
+export function isHarnessSyncEvent(event, action) {
+  return (event === "installation" && action === "created")
+    || (event === "installation_repositories" && action === "added");
+}
+
 export function createWebhookHandler({ config, fetchImpl = fetch, now = () => new Date(), deliveryQueue }) {
   let queue = Promise.resolve();
   let syncQueue = Promise.resolve();
@@ -63,7 +68,7 @@ export function createWebhookHandler({ config, fetchImpl = fetch, now = () => ne
       }
 
       if (event === "ping") return respond(response, 200, "pong\n");
-      if (event === "installation" && payload.action === "created" && config.harnessSync) {
+      if (isHarnessSyncEvent(event, payload.action) && config.harnessSync) {
         const enqueueSync = () => syncHarnessInstallation({
           installationId: payload.installation?.id,
           config: config.harnessSync,
