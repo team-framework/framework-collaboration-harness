@@ -78,7 +78,11 @@ test("초기 커밋이 없는 레포도 main을 초기화한 뒤 Draft PR을 만
       ] });
       if (path.startsWith("/repos/team-framework/truly-empty/pulls?")) return json([]);
       if (path === "/repos/team-framework/truly-empty/git/ref/heads/main" && !initialized) return json({ message: "Git Repository is empty." }, 409);
-      if (path === "/repos/team-framework/truly-empty/contents/.gitkeep" && options.method === "POST") { initialized = true; return json({}, ++initialFileCreates === 1 ? 201 : 201); }
+      if (path === "/repos/team-framework/truly-empty/contents/.gitkeep" && options.method === "POST") {
+        assert.equal(JSON.parse(options.body).content, "Cg==");
+        initialized = true;
+        return json({}, ++initialFileCreates === 1 ? 201 : 201);
+      }
       if (path === "/repos/team-framework/truly-empty/git/ref/heads/main") return json({ object: { sha: "initial-commit" } });
       if (path === "/repos/team-framework/truly-empty/git/trees" && options.method === "POST") return json({ sha: ++treeCreates === 1 ? "sync-tree" : "unexpected-tree" }, 201);
       if (path === "/repos/team-framework/truly-empty/git/commits" && options.method === "POST") return json({ sha: ++commitCreates === 1 ? "sync-commit" : "unexpected-commit" }, 201);
