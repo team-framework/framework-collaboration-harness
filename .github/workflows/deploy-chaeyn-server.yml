@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - alerts/**
+      - sync/**
+      - .codex/**
+      - .claude/**
+      - .github/ISSUE_TEMPLATE/**
+      - .github/pull_request_template.md
+      - .github/workflows/assign-issue-author.yml
       - deploy/**
       - package.json
       - .github/workflows/deploy-chaeyn-server.yml
@@ -26,6 +32,10 @@ jobs:
           install -d -m 700 "$app_dir" "$app_dir/runtime"
           install -m 600 package.json "$app_dir/package.json"
           rsync -a --delete alerts/ "$app_dir/alerts/"
+          rsync -a --delete sync/ "$app_dir/sync/"
+          rsync -a --delete .codex/ "$app_dir/.codex/"
+          rsync -a --delete .claude/ "$app_dir/.claude/"
+          rsync -a --delete .github/ "$app_dir/.github/"
           install -m 600 deploy/Dockerfile "$app_dir/Dockerfile"
           install -m 600 deploy/compose.yaml "$app_dir/compose.yaml"
           cd "$app_dir"
