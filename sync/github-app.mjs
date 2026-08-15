@@ -104,19 +104,16 @@ async function baseCommitFor(client, target) {
   } catch (error) {
     if (error.status !== 409) throw error;
 
-    const tree = await client.request(`/repos/${target.repository}/git/trees`, {
+    await client.request(`/repos/${target.repository}/contents/.gitkeep`, {
       method: "POST",
-      body: { tree: [] }
+      body: {
+        message: "chore: 저장소 초기화",
+        content: "",
+        branch: target.baseBranch
+      }
     });
-    const commit = await client.request(`/repos/${target.repository}/git/commits`, {
-      method: "POST",
-      body: { message: "chore: 저장소 초기화", tree: tree.sha, parents: [] }
-    });
-    await client.request(`/repos/${target.repository}/git/refs`, {
-      method: "POST",
-      body: { ref: `refs/heads/${target.baseBranch}`, sha: commit.sha }
-    });
-    return client.request(`/repos/${target.repository}/git/commits/${commit.sha}`);
+    const ref = await client.request(`/repos/${target.repository}/git/ref/heads/${encodeURIComponent(target.baseBranch)}`);
+    return client.request(`/repos/${target.repository}/git/commits/${ref.object.sha}`);
   }
 }
 
