@@ -1,5 +1,8 @@
 # Framework Collaboration Harness
 
+> [!IMPORTANT]
+> 2026.08.17일 이후로 [framework-agent-harness-sync](https://github.com/team-framework/framework-agent-harness-sync), [framework-discord-bot](https://github.com/team-framework/framework-discord-bot) 저장소로 분리 마이그레이션 되었습니다
+
 Framework 팀의 GitHub 협업 흐름을 가볍게 정리하고, GitHub 상태를 기준으로 Discord 알림을 보내는 하네스예요.
 
 규칙을 CI로 막기보다, 팀원과 AI 에이전트가 같은 이슈·브랜치·커밋·PR 기준을 읽고 일관되게 작업하도록 돕는 것을 목표로 해요.
