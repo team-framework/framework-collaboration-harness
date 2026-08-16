@@ -109,7 +109,7 @@ jobs:
           fi
 
           node source/sync/apply.mjs --source source --target target
-          if git -C target diff --quiet; then
+          if [ -z "$(git -C target status --porcelain --untracked-files=all)" ]; then
             node source/sync/write-result.mjs --file "$result_file" --repository "$TARGET_REPOSITORY" --status no_changes
             exit 0
           fi
