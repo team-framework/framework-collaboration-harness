@@ -28,8 +28,8 @@ test("봇 메시지를 제외하고 작성자를 익명화한 뒤 오래된 메�
     ]
   });
   assert.equal(transcript, [
-    "[2026-08-11T01:00:00.000Z] 참여자 1: 음성이 안 나와요.",
-    "[2026-08-11T02:00:00.000Z] 참여자 2: 설정을 수정했어요."
+    "참여자 1: 음성이 안 나와요.",
+    "참여자 2: 설정을 수정했어요."
   ].join("\n"));
 });
 
@@ -52,8 +52,8 @@ test("사용자 멘션도 같은 익명 참여자로 바꿔요", () => {
     ]
   });
   assert.equal(transcript, [
-    "[2026-08-11T01:00:00.000Z] 참여자 1: @참여자 2 설정을 확인해 주세요.",
-    "[2026-08-11T02:00:00.000Z] 참여자 2: 확인했어요."
+    "참여자 1: @참여자 2 설정을 확인해 주세요.",
+    "참여자 2: 확인했어요."
   ].join("\n"));
 });
 
@@ -89,7 +89,7 @@ test("OpenAI Structured Output으로 스레드를 정리해요", async () => {
       request = JSON.parse(options.body);
       return {
         ok: true,
-        json: async () => ({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ three_line_summary: { problem: "문제가 발생했어요.", action: "설정을 확인했어요.", status: "해결 여부를 재검증해요." }, timeline: [{ time: "08-11 10:00", event: "문제를 확인했어요." }], conclusion: ["결론"] }) }] }] })
+        json: async () => ({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ three_line_summary: { problem: "문제가 발생했어요.", action: "설정을 확인했어요.", status: "해결 여부를 재검증해요." }, discussion_flow: "문제를 확인한 뒤 설정을 점검하기로 했어요.", conclusion: ["결론"] }) }] }] })
       };
     }
   });
@@ -97,17 +97,17 @@ test("OpenAI Structured Output으로 스레드를 정리해요", async () => {
   assert.deepEqual(request.reasoning, { effort: "minimal" });
   assert.equal(request.store, false);
   assert.equal(request.text.format.type, "json_schema");
-  assert.deepEqual(summary, { three_line_summary: { problem: "문제가 발생했어요.", action: "설정을 확인했어요.", status: "해결 여부를 재검증해요." }, timeline: [{ time: "08-11 10:00", event: "문제를 확인했어요." }], conclusion: ["결론"] });
+  assert.deepEqual(summary, { three_line_summary: { problem: "문제가 발생했어요.", action: "설정을 확인했어요.", status: "해결 여부를 재검증해요." }, discussion_flow: "문제를 확인한 뒤 설정을 점검하기로 했어요.", conclusion: ["결론"] });
 });
 
-test("원본 메시지 답글에 넣을 읽기 쉬운 시간순 요약을 만들어요", () => {
+test("원본 메시지 답글에 넣을 읽기 쉬운 논의 흐름 요약을 만들어요", () => {
   const content = formatThreadSummary({
     guildId: "123456789012345678",
     threadId: "223456789012345678",
     threadName: "여러 환경 지원",
     summary: {
       three_line_summary: { problem: "설정 누락으로 문제가 발생했어요.", action: "설정값을 확인했어요.", status: "해결했어요." },
-      timeline: [{ time: "08-11 10:00", event: "설정 누락을 확인했어요." }],
+      discussion_flow: "설정 누락 가능성이 제기되어 설정값을 확인했고, 누락을 확인해 값을 채우기로 합의했어요.",
       conclusion: ["해결했어요."]
     }
   });
@@ -117,9 +117,9 @@ test("원본 메시지 답글에 넣을 읽기 쉬운 시간순 요약을 만들
   assert.match(content, /### 문제 상황\n설정 누락으로 문제가 발생했어요/);
   assert.match(content, /### 과정\n설정값을 확인했어요/);
   assert.match(content, /### 상태 \/ 결론\n해결했어요/);
-  assert.match(content, /## 타임라인/);
-  assert.match(content, /`08-11 10:00` 설정 누락을 확인했어요/);
-  assert.match(content, /## 다음 작업/);
+  assert.match(content, /## 논의 흐름/);
+  assert.match(content, /설정 누락 가능성이 제기되어 설정값을 확인했고/);
+  assert.match(content, /## 결론/);
   assert.match(content, /https:\/\/discord.com\/channels\/123456789012345678\/223456789012345678/);
 });
 
@@ -149,7 +149,7 @@ test("스레드 요약을 시작 메시지의 답글로 보내고 작성자에�
       return { ok: true, status: 200, json: async () => [{ id: "623456789012345678", timestamp: "2026-08-11T01:00:00Z", author: { id: "1", username: "client" }, content: "음성이 안 나와요.", mentions: [] }] };
     }
     if (url === "https://api.openai.com/v1/responses") {
-      return { ok: true, status: 200, json: async () => ({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ three_line_summary: { problem: "오디오가 출력되지 않았어요.", action: "출력 설정을 확인했어요.", status: "설정을 켠 뒤 재검증해요." }, timeline: [{ time: "08-11 10:00", event: "오디오 출력 설정이 꺼진 것을 확인했어요." }], conclusion: ["설정을 켜고 재검증해요."] }) }] }] }) };
+      return { ok: true, status: 200, json: async () => ({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ three_line_summary: { problem: "오디오가 출력되지 않았어요.", action: "출력 설정을 확인했어요.", status: "설정을 켠 뒤 재검증해요." }, discussion_flow: "오디오 출력 설정이 꺼진 것을 확인했고, 설정을 켠 뒤 재검증하기로 했어요.", conclusion: ["설정을 켜고 재검증해요."] }) }] }] }) };
     }
     if (url.endsWith("/channels/423456789012345678/messages")) {
       return { ok: true, status: 200, json: async () => ({ id: "723456789012345678" }) };
@@ -173,7 +173,7 @@ test("스레드 요약을 시작 메시지의 답글로 보내고 작성자에�
   assert.deepEqual(posted.body.allowed_mentions, { parse: [], replied_user: true });
   assert.match(posted.body.content, /^# 오디오 출력 설정 스레드 정리/);
   assert.doesNotMatch(posted.body.content, /🧵/);
-  assert.match(posted.body.content, /오디오 출력 설정이 꺼진 것을 확인했어요/);
+  assert.match(posted.body.content, /오디오 출력 설정이 꺼진 것을 확인했고/);
 });
 
 test("독립 생성한 스레드는 원본 채널에 제목과 작성자 멘션을 남겨요", async () => {
@@ -202,7 +202,7 @@ test("독립 생성한 스레드는 원본 채널에 제목과 작성자 멘션�
       return { ok: true, status: 200, json: async () => [{ id: "723456789012345678", timestamp: "2026-08-11T01:00:00Z", author: { id: "1", username: "client" }, content: "여러 환경을 지원해야 해요.", mentions: [] }] };
     }
     if (url === "https://api.openai.com/v1/responses") {
-      return { ok: true, status: 200, json: async () => ({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ three_line_summary: { problem: "환경별 설정이 달랐어요.", action: "환경별 설정을 분리했어요.", status: "각 환경에서 재검증해요." }, timeline: [{ time: "08-11 10:00", event: "여러 환경 지원 필요성을 확인했어요." }], conclusion: ["각 환경에서 재검증해요."] }) }] }] }) };
+      return { ok: true, status: 200, json: async () => ({ output: [{ content: [{ type: "output_text", text: JSON.stringify({ three_line_summary: { problem: "환경별 설정이 달랐어요.", action: "환경별 설정을 분리했어요.", status: "각 환경에서 재검증해요." }, discussion_flow: "여러 환경 지원 필요성이 제기되어 환경별 설정을 분리하기로 했어요.", conclusion: ["각 환경에서 재검증해요."] }) }] }] }) };
     }
     if (url.endsWith("/channels/423456789012345678/messages")) {
       return { ok: true, status: 200, json: async () => ({ id: "823456789012345678" }) };
