@@ -91,8 +91,7 @@ function messageLine(message, botUserId, participants) {
   if (!source) return null;
   const author = participantName(source.author?.id, participants);
   const content = replaceMentions(source.content.trim(), participants);
-  const timestamp = new Date(source.timestamp || message.timestamp).toISOString();
-  return `[${timestamp}] ${author}: ${content}`;
+  return `${author}: ${content}`;
 }
 
 export function buildThreadTranscript({ messages, botUserId, maxChars = MAX_TRANSCRIPT_CHARS }) {
@@ -130,14 +129,39 @@ export async function summarizeThread({ apiKey, model = DEFAULT_OPENAI_MODEL, tr
       store: false,
       reasoning,
       instructions: [
-        "당신은 한국어 개발 협업 스레드를 정리하는 도우미예요.",
-        "대화에 명시된 사실만 사용하고 추측하지 마세요.",
-        "원인이 확정되지 않았다면 확정되지 않았다고 적으세요.",
-        "가독성을 위해 짧고 능동적인 문장으로 쓰고, 같은 내용을 반복하지 마세요.",
-        "three_line_summary의 problem, action, status는 각각 한 줄로, 핵심만 50자 이내로 적으세요.",
-        "timeline에는 중요한 확인, 시도, 결정만 대화 발생 시각 오름차순으로 적으세요.",
-        "timeline의 time에는 입력의 시각을 한국 시간 기준 MM-DD HH:mm 형식으로 적으세요.",
-        "결론에는 결정된 내용, 해결 여부, 남은 다음 작업을 적으세요.",
+        "당신은 한국어 개발 협업 스레드를 회의록처럼 정리하는 기록자예요.",
+        "목표는 대화를 단순히 요약하는 것이 아니라, 논의가 어떤 주제에서 시작되었고 어떤 의견과 근거가 오갔으며 어떤 과정을 거쳐 합의 또는 결정에 도달했는지를 기록하는 것이에요.",
+        "원본 스레드를 읽지 않은 사람도 정리 결과만 보고 논의의 맥락과 최종 결론을 이해할 수 있어야 해요.",
+        "대화에 명시된 사실만 사용하고, 대화에 없는 사실이나 의도는 추론하지 마세요.",
+        "일반적인 개발 관행이나 상식에 따라 내용을 보완하지 마세요.",
+        "대화의 흐름은 주제 제기, 의견 제시, 근거, 다른 의견이나 반론, 추가 논의, 합의 또는 결정의 순서로 보존하세요.",
+        "모든 메시지를 나열하지 말고, 서로 연결되는 발언은 하나의 논의 흐름으로 묶어서 자연스럽게 서술하세요.",
+        "단순한 인사, 반복적인 발언, 논의의 맥락을 이해하는 데 필요하지 않은 내용은 제외하세요.",
+        "제안, 논의, 결정, 실행, 완료를 구분하세요.",
+        "의견이나 제안만으로 결정되었다고 판단하지 마세요.",
+        "결정되었다는 사실만으로 실행되었다고 판단하지 마세요.",
+        "실행되었다는 사실만으로 완료되었다고 판단하지 마세요.",
+        "'제안합니다', '좋다고 생각합니다', '하면 좋겠습니다', '어떨까요' 등의 표현은 제안이나 의견으로 취급하세요.",
+        "'결정하겠습니다', '이것으로 하겠습니다', '이걸로 결정했습니다' 등 명시적인 결정 표현이 있을 때만 결정으로 취급하세요.",
+        "명시적인 동의가 최종 결정에 연결되어 있다면 합의가 이루어진 것으로 기록할 수 있어요.",
+        "결정의 근거가 대화에서 제시되었다면 그 근거를 논의 흐름에 포함하세요.",
+        "결정의 근거가 명시되지 않았다면 임의로 이유를 만들어내지 마세요.",
+        "대화 중 기존 내용이 명시적으로 정정되었다면 정정된 내용을 기준으로 정리하세요.",
+        "서로 다른 의견이나 정보가 존재하지만 정정이나 합의가 없다면 어느 한쪽을 사실로 확정하지 마세요.",
+        "확인되지 않은 내용은 '확인되지 않음'으로 표시하세요.",
+        "대화에 없는 후속 작업, 일정, 담당자, 목표, 원인, 추가 계획을 생성하지 마세요.",
+        "결정된 내용을 바탕으로 일반적으로 필요할 것 같은 업무를 다음 작업으로 추천하지 마세요.",
+        "스레드에서 언급되지 않은 업무를 결론에 추가하지 마세요.",
+        "three_line_summary의 problem, action, status는 각각 문제 상황, 논의 과정, 현재 상태 또는 결론을 한 줄로 작성하세요.",
+        "각 항목은 50자 이내로 작성하세요.",
+        "three_line_summary는 논의의 핵심을 압축해서 보여주되, 대화에 없는 내용을 추가하지 마세요.",
+        "discussion_flow는 시간별 메시지 목록이나 타임라인으로 작성하지 마세요.",
+        "discussion_flow는 대화의 시간 순서를 유지하면서 주요 의견, 근거, 반론, 합의 및 결정이 어떻게 이어졌는지를 하나의 자연스러운 회의록 문단으로 작성하세요.",
+        "discussion_flow에는 논의의 흐름을 이해하는 데 필요한 내용만 포함하세요.",
+        "conclusion에는 최종 결정, 결정의 주요 근거, 현재 실행 또는 완료 상태만 기록하세요.",
+        "결정되지 않았다면 '결정되지 않음'이라고 기록하세요.",
+        "실행 여부가 확인되지 않았다면 '실행 여부 확인되지 않음'이라고 기록하세요.",
+        "완료 여부가 확인되지 않았다면 완료로 표현하지 마세요.",
         "사람 이름이나 계정명은 꼭 필요한 경우가 아니면 제외하세요."
       ].join(" "),
       input: `다음 Discord 스레드를 정리해 주세요.\n\n${transcript}`,
@@ -160,21 +184,12 @@ export async function summarizeThread({ apiKey, model = DEFAULT_OPENAI_MODEL, tr
                 required: ["problem", "action", "status"],
                 additionalProperties: false
               },
-              timeline: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    time: { type: "string" },
-                    event: { type: "string" }
-                  },
-                  required: ["time", "event"],
-                  additionalProperties: false
-                }
+              discussion_flow: {
+                type: "string"
               },
               conclusion: { type: "array", items: { type: "string" } }
             },
-            required: ["three_line_summary", "timeline", "conclusion"],
+            required: ["three_line_summary", "discussion_flow", "conclusion"],
             additionalProperties: false
           }
         }
@@ -203,12 +218,10 @@ function threeLineSummarySection(summary) {
   ].join("\n");
 }
 
-function timelineSection(items) {
-  const normalized = Array.isArray(items) && items.length > 0 ? items : [];
-  if (normalized.length === 0) return "## 타임라인\n- 확인된 내용이 없어요.";
+function discussionFlowSection(flow) {
   return [
-    "## 타임라인",
-    ...normalized.slice(0, 8).map(({ time, event }) => `- ${"`"}${String(time).trim()}${"`"} ${String(event).trim()}`)
+    "## 논의 흐름",
+    String(flow || "확인된 내용이 없어요.").trim()
   ].join("\n");
 }
 
@@ -217,8 +230,8 @@ export function formatThreadSummary({ summary, guildId, threadId, threadName, ow
     `# ${required(threadName, "threadName")} 스레드 정리`,
     ...(ownerMentionId ? [`스레드 작성자: <@${ownerMentionId}>`] : []),
     threeLineSummarySection(summary.three_line_summary),
-    timelineSection(summary.timeline),
-    headingSection("다음 작업", summary.conclusion),
+    discussionFlowSection(summary.discussion_flow),
+    headingSection("결론", summary.conclusion),
     `-# [스레드 열기](https://discord.com/channels/${guildId}/${threadId})`
   ].join("\n\n");
   if (content.length <= MAX_DISCORD_CONTENT) return content;
