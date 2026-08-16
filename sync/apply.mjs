@@ -1,6 +1,7 @@
-import { cp, lstat, mkdir } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { mergeManagedInstructions } from "./instructions.mjs";
 import { syncItems } from "./manifest.mjs";
 
 function containedPath(root, path) {
@@ -24,6 +25,17 @@ export async function applyHarnessFiles({ sourceRoot, targetRoot, items = syncIt
     const sourceStat = await lstat(source);
 
     await mkdir(dirname(destination), { recursive: true });
+    if (item.mode === "append-managed-instructions") {
+      let existing = "";
+      try {
+        existing = await readFile(destination, "utf8");
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+      await writeFile(destination, mergeManagedInstructions(existing, await readFile(source, "utf8")));
+      copied.push(item.destination);
+      continue;
+    }
     await cp(source, destination, {
       recursive: sourceStat.isDirectory(),
       force: true,

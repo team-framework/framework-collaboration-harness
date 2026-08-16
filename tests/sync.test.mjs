@@ -45,6 +45,25 @@ test("관리 대상 파일만 복사하고 대상 레포의 다른 파일은 유
   assert.equal(await readFile(join(target, ".codex", "skills", "custom", "SKILL.md"), "utf8"), "custom skill\\n");
 });
 
+test("기존 에이전트 지시를 보존하고 하네스 규칙만 갱신해요", async () => {
+  const root = await mkdtemp(join(tmpdir(), "harness-sync-"));
+  const source = join(root, "source");
+  const target = join(root, "target");
+  await mkdir(source, { recursive: true });
+  await mkdir(target, { recursive: true });
+  await writeFile(join(source, "AGENTS.md"), "# Framework 규칙\\n");
+  await writeFile(join(target, "AGENTS.md"), "# 제품 고유 규칙\\n");
+
+  const item = { source: "AGENTS.md", destination: "AGENTS.md", mode: "append-managed-instructions" };
+  await applyHarnessFiles({ sourceRoot: source, targetRoot: target, items: [item] });
+  await applyHarnessFiles({ sourceRoot: source, targetRoot: target, items: [item] });
+
+  const instructions = await readFile(join(target, "AGENTS.md"), "utf8");
+  assert.match(instructions, /제품 고유 규칙/);
+  assert.match(instructions, /Framework 규칙/);
+  assert.equal((instructions.match(/framework-collaboration-harness:start/g) || []).length, 1);
+});
+
 test("동기화 결과를 레포별 표로 만들어요", () => {
   const report = renderSyncReport([
     { repository: "team-framework/innolive-server", status: "existing_pr", detail: "#12" },

@@ -4,12 +4,15 @@
 
 ## 동기화 대상
 
+- `AGENTS.md`, `CLAUDE.md` (기존 내용은 보존하고 하네스 관리 섹션만 추가 또는 갱신)
 - `.codex/skills/{issue,branch,commit,pull-request}`
 - `.claude/skills/{issue,branch,commit,pull-request}`
 - `.github/ISSUE_TEMPLATE/{01-feat,02-fix,03-chore,04-refactor}.yml`
 - `.github/pull_request_template.md`
 
 GitHub App 설치 토큰은 GitHub Actions workflow 파일을 만들 수 없으므로 `.github/workflows/assign-issue-author.yml`은 자동 동기화 대상에서 제외해요. Discord 알림 코드, 배포 설정, 대상 레포의 고유 스킬도 동기화하지 않아요.
+
+`AGENTS.md` 또는 `CLAUDE.md`가 이미 있는 대상 레포는 해당 파일을 덮어쓰지 않아요. `framework-collaboration-harness` 관리 마커 사이의 섹션만 갱신하므로 제품 고유 지시는 유지돼요.
 
 같은 대상 레포에 열린 동기화 PR이 있으면 새 PR을 만들지 않아요. PR을 머지하거나 닫은 다음 실행에서 최신 원본으로 다시 동기화해요.
 

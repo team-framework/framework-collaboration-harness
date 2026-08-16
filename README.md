@@ -27,6 +27,8 @@ Framework 팀의 GitHub 협업 흐름을 가볍게 정리하고, GitHub 상태�
 
 PR은 항상 Draft로 시작해요. 작업이 준비되면 Ready for review로 전환해요.
 
+GitHub App 동기화는 대상 레포의 기존 지시를 보존하면서 `AGENTS.md`와 `CLAUDE.md`에 하네스 협업 규칙을 추가하고, 각 도구의 SKILL과 GitHub 템플릿을 함께 배포해요. 이 기능은 규칙을 안내하는 용도이며 GitHub에서 형식을 차단하지는 않아요.
+
 ## 하네스 동기화
 
 협업 가이드와 GitHub 템플릿은 이 레포를 원본으로 관리해요. GitHub App이 새 레포에 설치되면 필요한 파일만 담은 Draft PR을 즉시 자동으로 만들고, 이후 원본 변경도 동기화해요. 설정 방법은 [하네스 자동 동기화](docs/HARNESS_SYNC.md)를 참고해요.
@@ -96,7 +98,8 @@ npm run github:sync-open-prs
 
 | 경로 | 설명 |
 | --- | --- |
-| `.codex/skills`, `.claude/skills` | AI 에이전트 작업 기준 |
+| `AGENTS.md`, `CLAUDE.md` | Codex·Claude가 읽는 공통 협업 규칙 |
+| `.codex/skills`, `.claude/skills` | 도구별 이슈·브랜치·커밋·PR 작업 기준 |
 | `.github/ISSUE_TEMPLATE` | GitHub Issue Form |
 | `alerts/` | 상태 판별, Discord 전송, Gateway |
 | `deploy/` | 서버 Docker Compose 구성 |

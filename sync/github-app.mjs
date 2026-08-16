@@ -2,6 +2,7 @@ import { createHash, createSign } from "node:crypto";
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { selectTargets } from "./discover.mjs";
+import { mergeManagedInstructions } from "./instructions.mjs";
 import { syncBranch, syncCommitMessage, syncItems, syncPullRequestTitle } from "./manifest.mjs";
 
 const API_BASE_URL = "https://api.github.com";
@@ -46,7 +47,7 @@ export async function loadSyncTree({ sourceRoot, items = syncItems }) {
       const stat = await lstat(file);
       if (!stat.isFile()) throw new Error(`동기화 파일은 일반 파일이어야 해요: ${file}`);
       const content = await readFile(file);
-      files.push({ path: join(item.destination, relative(source, file)).replaceAll("\\", "/"), content, sha: gitBlobSha(content) });
+      files.push({ path: join(item.destination, relative(source, file)).replaceAll("\\", "/"), content, sha: gitBlobSha(content), mode: item.mode });
     }
   }
   return files.sort((left, right) => left.path.localeCompare(right.path));
@@ -125,7 +126,18 @@ async function createSyncPullRequest({ client, target, files }) {
   const baseCommitSha = baseCommit.sha;
   const baseTree = await client.request(`/repos/${target.repository}/git/trees/${baseCommit.tree.sha}?recursive=1`);
   const existingBlobs = new Map(baseTree.tree.filter((entry) => entry.type === "blob").map((entry) => [entry.path, entry.sha]));
-  const changedFiles = files.filter((file) => existingBlobs.get(file.path) !== file.sha);
+  const resolvedFiles = await Promise.all(files.map(async (file) => {
+    if (file.mode !== "append-managed-instructions") return file;
+    const existingSha = existingBlobs.get(file.path);
+    let existing = "";
+    if (existingSha) {
+      const blob = await client.request(`/repos/${target.repository}/git/blobs/${existingSha}`);
+      existing = Buffer.from(blob.content, blob.encoding || "base64").toString("utf8");
+    }
+    const content = Buffer.from(mergeManagedInstructions(existing, file.content.toString("utf8")));
+    return { ...file, content, sha: gitBlobSha(content) };
+  }));
+  const changedFiles = resolvedFiles.filter((file) => existingBlobs.get(file.path) !== file.sha);
   if (changedFiles.length === 0) return { repository: target.repository, status: "no_changes" };
 
   const tree = await client.request(`/repos/${target.repository}/git/trees`, {

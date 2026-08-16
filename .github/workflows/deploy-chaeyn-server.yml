@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - AGENTS.md
+      - CLAUDE.md
       - alerts/**
       - sync/**
       - .codex/**
@@ -31,6 +33,8 @@ jobs:
           app_dir=/home/chaeyn/apps/framework-collaboration-harness
           install -d -m 700 "$app_dir" "$app_dir/runtime"
           install -m 600 package.json "$app_dir/package.json"
+          install -m 600 AGENTS.md "$app_dir/AGENTS.md"
+          install -m 600 CLAUDE.md "$app_dir/CLAUDE.md"
           rsync -a --delete alerts/ "$app_dir/alerts/"
           rsync -a --delete sync/ "$app_dir/sync/"
           rsync -a --delete .codex/ "$app_dir/.codex/"

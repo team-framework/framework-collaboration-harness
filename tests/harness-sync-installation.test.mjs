@@ -48,6 +48,8 @@ test("설치된 빈 레포에 하네스 스킬 Draft PR을 만들어요", async 
   const tree = JSON.parse(treeRequest.options.body);
   assert.ok(tree.tree.some((file) => file.path === ".codex/skills/issue/SKILL.md"));
   assert.ok(tree.tree.some((file) => file.path === ".claude/skills/pull-request/SKILL.md"));
+  assert.ok(tree.tree.some((file) => file.path === "AGENTS.md"));
+  assert.ok(tree.tree.some((file) => file.path === "CLAUDE.md"));
   const pullRequest = calls.find((call) => call.path.endsWith("/pulls") && call.options.method === "POST");
   assert.deepEqual(JSON.parse(pullRequest.options.body), {
     title: "chore: collaboration-harness-sync",
@@ -56,6 +58,41 @@ test("설치된 빈 레포에 하네스 스킬 Draft PR을 만들어요", async 
     draft: true,
     body: "Framework Collaboration Harness 변경을 동기화했어요."
   });
+});
+
+test("기존 AGENTS.md를 보존한 채 하네스 규칙을 추가해요", async () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const calls = [];
+  await syncHarnessInstallation({
+    installationId: 9,
+    config: { appId: "Iv1.test", privateKey: privateKey.export({ type: "pkcs1", format: "pem" }), sourceRepository: "team-framework/framework-collaboration-harness" },
+    sourceRoot: process.cwd(),
+    fetchImpl: async (url, options = {}) => {
+      const path = new URL(url).pathname + new URL(url).search;
+      calls.push({ path, options });
+      if (path === "/app/installations/9/access_tokens") return json({ token: "installation-token" }, 201);
+      if (path === "/installation/repositories?per_page=100&page=1") return json({ repositories: [
+        { full_name: "team-framework/framework-collaboration-harness", name: "framework-collaboration-harness", default_branch: "main" },
+        { full_name: "team-framework/target", name: "target", default_branch: "main" }
+      ] });
+      if (path.startsWith("/repos/team-framework/target/pulls?")) return json([]);
+      if (path === "/repos/team-framework/target/git/ref/heads/main") return json({ object: { sha: "base-commit" } });
+      if (path === "/repos/team-framework/target/git/commits/base-commit") return json({ sha: "base-commit", tree: { sha: "base-tree" } });
+      if (path === "/repos/team-framework/target/git/trees/base-tree?recursive=1") return json({ tree: [{ path: "AGENTS.md", type: "blob", sha: "existing-agents" }] });
+      if (path === "/repos/team-framework/target/git/blobs/existing-agents") return json({ encoding: "base64", content: Buffer.from("# 제품 고유 규칙\\n").toString("base64") });
+      if (path === "/repos/team-framework/target/git/trees") return json({ sha: "sync-tree" }, 201);
+      if (path === "/repos/team-framework/target/git/commits") return json({ sha: "sync-commit" }, 201);
+      if (path === "/repos/team-framework/target/git/refs") return json({}, 201);
+      if (path === "/repos/team-framework/target/pulls") return json({ html_url: "https://github.com/team-framework/target/pull/1" }, 201);
+      throw new Error(`예상하지 않은 GitHub 요청: ${options.method || "GET"} ${path}`);
+    }
+  });
+
+  const treeRequest = calls.find((call) => call.path === "/repos/team-framework/target/git/trees" && call.options.method === "POST");
+  const tree = JSON.parse(treeRequest.options.body);
+  const agents = tree.tree.find((file) => file.path === "AGENTS.md");
+  assert.match(agents.content, /제품 고유 규칙/);
+  assert.match(agents.content, /framework-collaboration-harness:start/);
 });
 
 test("초기 커밋이 없는 레포도 main을 초기화한 뒤 Draft PR을 만들어요", async () => {
