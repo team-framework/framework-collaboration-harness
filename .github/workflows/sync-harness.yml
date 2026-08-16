@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - AGENTS.md
+      - CLAUDE.md
       - .codex/skills/**
       - .claude/skills/**
       - .github/ISSUE_TEMPLATE/**
@@ -121,7 +123,7 @@ jobs:
             git -C target push origin --delete "$branch"
           fi
           git -C target switch -c "$branch"
-          git -C target add .codex .claude .github
+          git -C target add .codex .claude .github AGENTS.md CLAUDE.md
           git -C target commit -m "chore: 협업 하네스 동기화"
           git -C target push origin "HEAD:$branch"
           pr_url=$(gh pr create --repo "$TARGET_REPOSITORY" --base "$BASE_BRANCH" --head "$branch" --draft --title "chore: collaboration-harness-sync" --body "Framework Collaboration Harness 변경을 동기화했어요.")

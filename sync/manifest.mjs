@@ -10,6 +10,18 @@ function skillItems(tool) {
 }
 
 export const syncItems = [
+  {
+    id: "agents-instructions",
+    source: "AGENTS.md",
+    destination: "AGENTS.md",
+    mode: "append-managed-instructions"
+  },
+  {
+    id: "claude-instructions",
+    source: "CLAUDE.md",
+    destination: "CLAUDE.md",
+    mode: "append-managed-instructions"
+  },
   ...skillItems("codex"),
   ...skillItems("claude"),
   ...issueTemplates.map((name) => ({
